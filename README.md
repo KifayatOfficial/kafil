@@ -1,8 +1,12 @@
 # KAFIL
 
+[![ci](https://github.com/KifayatOfficial/kafil/actions/workflows/ci.yml/badge.svg)](https://github.com/KifayatOfficial/kafil/actions/workflows/ci.yml)
+
 Hyperlocal labor & community marketplace for Swat, Northern Pakistan.
 
-> **Read the spec first.** This codebase is built strictly from the v1.1 engineering addendum. See `../KAFIL_DOCS_INDEX.md` (or the docs bundle) for the canonical hierarchy. Where any older doc conflicts with `KAFIL_SPEC_v1.1_ADDENDUM.md`, v1.1 wins.
+> **Read the spec first.** This codebase is built strictly from the v1.1 engineering addendum.
+> Start at **[`docs/README.md`](docs/README.md)** → then **[`docs/KAFIL_DOCS_INDEX.md`](docs/KAFIL_DOCS_INDEX.md)** for the canonical hierarchy.
+> Where any older doc conflicts with **[`docs/KAFIL_SPEC_v1.1_ADDENDUM.md`](docs/KAFIL_SPEC_v1.1_ADDENDUM.md)**, **v1.1 wins**.
 
 ## Repo layout
 
