@@ -45,8 +45,6 @@ interface Props {
 
 type Phase = 'loading' | 'ready' | 'submitting' | 'success' | 'error';
 
-const L = 'ps' as const;
-
 /** paisa (string) → human PKR, e.g. "800000" → "8,000". */
 function pkr(minor: string): string {
   const n = Math.floor(Number(minor) / 100);
@@ -54,7 +52,7 @@ function pkr(minor: string): string {
 }
 
 export function WalletScreen({ onBack }: Props) {
-  const { api, inCooldown } = useAuth();
+  const { api, inCooldown, lang: L } = useAuth();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [amountPkr, setAmountPkr] = useState('');
@@ -69,7 +67,7 @@ export function WalletScreen({ onBack }: Props) {
       setError(i18n.t(L, 'error.generic'));
       setPhase('error');
     }
-  }, [api]);
+  }, [api, L]);
 
   useEffect(() => {
     load().catch(() => {
@@ -208,7 +206,7 @@ export function WalletScreen({ onBack }: Props) {
                 <View key={p.id} style={styles.payoutRow}>
                   <Text style={styles.payoutAmount}>{pkr(p.amountMinor)} PKR</Text>
                   <View style={styles.payoutMeta}>
-                    <StatusBadge status={p.status} />
+                    <StatusBadge status={p.status} lang={L} />
                     <Text style={styles.payoutDate}>{new Date(p.createdAt).toLocaleDateString()}</Text>
                   </View>
                 </View>
@@ -224,10 +222,10 @@ export function WalletScreen({ onBack }: Props) {
 }
 
 // §25.2 — never colour alone: pair the dot with a text label.
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, lang }: { status: string; lang: import('@kafil/core').Lang }) {
   const color =
     status === 'sent' ? motion.color.primary : status === 'failed' ? motion.color.danger : motion.color.warning;
-  const label = status === 'sent' ? i18n.t(L, 'wallet.sent') : status;
+  const label = status === 'sent' ? i18n.t(lang, 'wallet.sent') : status;
   return (
     <View style={styles.badge}>
       <View style={[styles.badgeDot, { backgroundColor: color }]} />

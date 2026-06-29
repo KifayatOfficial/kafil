@@ -34,7 +34,7 @@ export function SkeletonList({ rows = 5 }: { rows?: number }) {
   return (
     <View accessibilityLabel="Loading">
       {Array.from({ length: rows }, (_, i) => (
-        <SkeletonCard key={i} />
+        <SkeletonCard key={`skeleton-${i}`} />
       ))}
     </View>
   );

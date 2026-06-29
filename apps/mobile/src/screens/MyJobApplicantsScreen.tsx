@@ -160,6 +160,7 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
             <ApplicantCard
               key={a.id}
               app={a}
+              lang={lang}
               accepting={acceptingAppId === a.id}
               canAccept={(job?.slots.some((s) => s.status === 'open') ?? false) && a.status === 'pending'}
               onAccept={() => accept(a.id)}
@@ -173,11 +174,13 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
 
 function ApplicantCard({
   app,
+  lang,
   accepting,
   canAccept,
   onAccept,
 }: {
   app: Applicant;
+  lang: import('@kafil/core').Lang;
   accepting: boolean;
   canAccept: boolean;
   onAccept: () => void;
@@ -220,7 +223,11 @@ function ApplicantCard({
             <ActivityIndicator color="white" />
           ) : (
             <Text style={styles.acceptBtnText}>
-              {app.status === 'accepted' ? 'Accepted' : canAccept ? 'Accept' : 'No open slot'}
+              {app.status === 'accepted'
+                ? i18n.t(lang, 'applicants.accepted')
+                : canAccept
+                  ? i18n.t(lang, 'applicants.accept')
+                  : i18n.t(lang, 'applicants.no_slot')}
             </Text>
           )}
         </Animated.View>

@@ -130,7 +130,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
         ) : phase === 'applied' ? (
           <SuccessView job={job!} lang={lang} />
         ) : phase === 'stale' ? (
-          <StaleView jobTitle={job?.title ?? ''} onBack={onClose} />
+          <StaleView jobTitle={job?.title ?? ''} onBack={onClose} lang={lang} />
         ) : (
           <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
             <Text style={styles.title}>{job?.title}</Text>
@@ -203,7 +203,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
 
             {job?.status !== 'open' ? (
               <Text style={[styles.muted, { textAlign: 'center', marginTop: 8 }]}>
-                This job is not accepting applications right now.
+                {i18n.t(lang, 'job.not_accepting')}
               </Text>
             ) : null}
           </ScrollView>
@@ -240,16 +240,22 @@ function SuccessView({ job, lang }: { job: Job; lang: import('@kafil/core').Lang
   );
 }
 
-function StaleView({ jobTitle, onBack }: { jobTitle: string; onBack: () => void }) {
+function StaleView({
+  jobTitle,
+  onBack,
+  lang,
+}: {
+  jobTitle: string;
+  onBack: () => void;
+  lang: import('@kafil/core').Lang;
+}) {
   return (
     <View style={styles.staleWrap}>
       <Text style={styles.staleEmoji}>⌛</Text>
-      <Text style={styles.staleTitle}>This job just filled</Text>
-      <Text style={styles.muted}>
-        "{jobTitle}" was taken by another worker — or you've already applied. Try a similar one nearby.
-      </Text>
-      <Pressable onPress={onBack} style={styles.staleCta}>
-        <Text style={styles.ctaText}>Back to jobs</Text>
+      <Text style={styles.staleTitle}>{i18n.t(lang, 'job.stale_title')}</Text>
+      <Text style={styles.muted}>"{jobTitle}" — {i18n.t(lang, 'job.stale_body')}</Text>
+      <Pressable onPress={onBack} style={styles.staleCta} accessibilityLabel={i18n.t(lang, 'job.back_to_jobs')}>
+        <Text style={styles.ctaText}>{i18n.t(lang, 'job.back_to_jobs')}</Text>
       </Pressable>
     </View>
   );

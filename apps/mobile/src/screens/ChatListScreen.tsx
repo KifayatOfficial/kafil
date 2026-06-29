@@ -74,8 +74,8 @@ export function ChatListScreen({ onBack }: Props) {
             return (
               <ConvRow
                 key={c.id}
-                title={other?.user.displayName ?? 'Unknown'}
-                lastMessage={last?.bodyRedacted ?? last?.body ?? null}
+                title={other?.user.displayName ?? '—'}
+                lastMessage={last?.bodyRedacted ?? last?.body ?? i18n.t(lang, 'chat.no_messages')}
                 onPress={() => setOpenId(c.id)}
               />
             );
@@ -109,7 +109,7 @@ function ConvRow({
       <Animated.View style={[styles.row, a]}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.muted} numberOfLines={1}>
-          {lastMessage ?? 'No messages yet'}
+          {lastMessage}
         </Text>
       </Animated.View>
     </Pressable>

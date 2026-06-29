@@ -76,7 +76,15 @@ type StringKey =
   | 'activity.my_jobs'
   | 'activity.no_applications'
   | 'activity.no_jobs'
-  | 'applicants.empty';
+  | 'applicants.empty'
+  | 'applicants.accept'
+  | 'applicants.accepted'
+  | 'applicants.no_slot'
+  | 'job.not_accepting'
+  | 'job.stale_title'
+  | 'job.stale_body'
+  | 'job.back_to_jobs'
+  | 'chat.no_messages';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -152,6 +160,14 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'activity.no_applications': 'تر اوسه مو هیڅ غوښتنه نه ده کړې.',
     'activity.no_jobs': 'تر اوسه مو هیڅ کار نه دی خپور کړی.',
     'applicants.empty': 'تر اوسه هیڅ غوښتونکی نشته — دا کار شریک کړئ.',
+    'applicants.accept': 'ومنئ',
+    'applicants.accepted': 'منل شوی',
+    'applicants.no_slot': 'خالي ځای نشته',
+    'job.not_accepting': 'دا کار اوس مهال غوښتنې نه مني.',
+    'job.stale_title': 'دا کار ډک شو',
+    'job.stale_body': 'دا کار بل کارګر ونیو — یا تاسو دمخه غوښتنه کړې. نږدې ورته بل وګورئ.',
+    'job.back_to_jobs': 'بیرته کارونو ته',
+    'chat.no_messages': 'تر اوسه پیغام نشته',
   },
   ur: {
     'app.name': 'کافل',
@@ -226,6 +242,14 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'activity.no_applications': 'آپ نے ابھی تک کسی چیز کے لیے درخواست نہیں دی۔',
     'activity.no_jobs': 'آپ نے ابھی تک کوئی کام پوسٹ نہیں کیا۔',
     'applicants.empty': 'ابھی تک کوئی درخواست گزار نہیں — یہ کام شیئر کریں۔',
+    'applicants.accept': 'قبول کریں',
+    'applicants.accepted': 'قبول شدہ',
+    'applicants.no_slot': 'کوئی خالی جگہ نہیں',
+    'job.not_accepting': 'یہ کام اس وقت درخواستیں قبول نہیں کر رہا۔',
+    'job.stale_title': 'یہ کام بھر گیا',
+    'job.stale_body': 'یہ کام کسی اور کارکن نے لے لیا — یا آپ پہلے درخواست دے چکے ہیں۔ قریب کوئی ملتا جلتا دیکھیں۔',
+    'job.back_to_jobs': 'کاموں پر واپس',
+    'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
   },
   en: {
     'app.name': 'KAFIL',
@@ -300,6 +324,14 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'activity.no_applications': "You haven't applied to anything yet.",
     'activity.no_jobs': "You haven't posted any jobs yet.",
     'applicants.empty': 'No applicants yet — share this job to get workers.',
+    'applicants.accept': 'Accept',
+    'applicants.accepted': 'Accepted',
+    'applicants.no_slot': 'No open slot',
+    'job.not_accepting': 'This job is not accepting applications right now.',
+    'job.stale_title': 'This job just filled',
+    'job.stale_body': "This job was taken by another worker — or you've already applied. Try a similar one nearby.",
+    'job.back_to_jobs': 'Back to jobs',
+    'chat.no_messages': 'No messages yet',
   },
 };
 

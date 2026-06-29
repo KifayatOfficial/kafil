@@ -10,10 +10,11 @@ import {
   View,
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion, randomUUID } from '@kafil/core';
+import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
+import { SkeletonList } from '../components/Skeleton';
 
 interface SpecialtyRow {
   id: string;
@@ -39,7 +40,7 @@ const FALLBACK_ICON: Record<string, string> = {
 };
 
 export function WorkerSpecialtiesScreen({ onDone }: Props) {
-  const { api } = useAuth();
+  const { api, lang } = useAuth();
   const [items, setItems] = useState<SpecialtyRow[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -95,11 +96,11 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>What do you do?</Text>
-      <Text style={styles.subtitle}>Tap all that apply.</Text>
+      <Text style={styles.title}>{i18n.t(lang, 'onboarding.specialties_title')}</Text>
+      <Text style={styles.subtitle}>{i18n.t(lang, 'common.tap_all')}</Text>
 
       {!items ? (
-        <ActivityIndicator />
+        <SkeletonList rows={4} />
       ) : (
         <ScrollView contentContainerStyle={styles.grid}>
           {grid.map((sp) => {
@@ -107,7 +108,16 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
             const label = sp.name_ps ?? sp.name_en ?? sp.slug;
             const icon = (sp.icon && FALLBACK_ICON[sp.slug]) ?? FALLBACK_ICON[sp.slug] ?? '•';
             return (
-              <Pressable key={sp.id} onPress={() => toggle(sp.id)} style={{ width: '33%' }}>
+              <Pressable
+                key={sp.id}
+                onPress={() => {
+                  void haptic(motion.hapticToken.TAP_LIGHT);
+                  toggle(sp.id);
+                }}
+                style={{ width: '33%' }}
+                accessibilityLabel={label}
+                accessibilityState={{ selected: isPicked }}
+              >
                 <View style={[styles.tile, isPicked && styles.tilePicked]}>
                   <Text style={{ fontSize: 38, marginBottom: 6 }}>{icon}</Text>
                   <Text style={[styles.tileLabel, isPicked && styles.tileLabelPicked]}>{label}</Text>
@@ -138,7 +148,7 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
         >
           {saving ? <ActivityIndicator color="white" /> : (
             <Text style={styles.ctaText}>
-              Continue {picked.size > 0 ? `(${picked.size})` : ''}
+              {i18n.t(lang, 'common.continue')} {picked.size > 0 ? `(${picked.size})` : ''}
             </Text>
           )}
         </Animated.View>
