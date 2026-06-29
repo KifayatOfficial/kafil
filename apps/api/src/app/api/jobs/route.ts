@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { jobService } from '../../../services/job.service';
 import { idempotent } from '../../../lib/idempotency';
 import { statusFor } from '../../../lib/result';
+import { getActorOrDevStub } from '../../../lib/auth';
 
 export async function GET() {
   const res = await jobService.listOpen();
@@ -23,15 +24,14 @@ export async function POST(req: Request) {
     );
   }
 
-  // TEMP: auth not wired yet — accept X-User-Id header for early dev only.
-  // Real auth in apps/api/src/lib/auth.ts (Tier-B follow-up).
-  const employerId = req.headers.get('x-user-id');
-  if (!employerId) {
+  const actor = getActorOrDevStub(req);
+  if (!actor) {
     return NextResponse.json(
-      { ok: false, code: 'UNAUTHORIZED', message: 'X-User-Id header required (dev stub)' },
+      { ok: false, code: 'UNAUTHORIZED', message: 'Authorization: Bearer <token> required' },
       { status: 401 },
     );
   }
+  const employerId = actor.userId;
 
   const body = await req.json();
   const guard = await idempotent({

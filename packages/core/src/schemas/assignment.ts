@@ -52,7 +52,8 @@ export const MarkDoneInput = TransitionInput.extend({
   photo_urls: z.array(z.string().url()).max(10).default([]),
   geo: z
     .object({ lat: z.number(), lng: z.number(), accuracy_m: z.number().positive() })
-    .nullable(),
+    .nullish()
+    .transform((v) => v ?? null),
 });
 
 export const CancelInput = TransitionInput.extend({

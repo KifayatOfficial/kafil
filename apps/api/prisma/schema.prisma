@@ -256,7 +256,7 @@ model Assignment {
   jobId                  String    @map("job_id") @db.Uuid
   slotId                 String    @map("slot_id") @db.Uuid
   workerId               String    @map("worker_id") @db.Uuid
-  status                 String    @default("assigned") @db.VarChar(24)
+  status                 String    @default("assigned") @db.VarChar(32)
   agreedRatePkr          Int       @map("agreed_rate_pkr")
   kycSnapshot            Json?     @map("kyc_snapshot")
   startedAt              DateTime? @map("started_at") @db.Timestamptz

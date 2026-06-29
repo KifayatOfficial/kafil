@@ -100,8 +100,8 @@ export const assignmentService = {
     const next = nextStatus(current.status as AssignmentStatus, args.name);
     if (!next) return err('CONFLICT', 'no next state');
 
-    await prisma.$transaction(async (tx) => {
-      await tx.assignment.update({
+    const finalStatus = await prisma.$transaction(async (tx) => {
+      const updated = await tx.assignment.update({
         where: { id: args.assignmentId },
         data: {
           status: next,
@@ -120,9 +120,35 @@ export const assignmentService = {
         refId: args.assignmentId,
         payload: args.payload ?? null,
       });
+
+      // §4.3 — auto-rollforward to `completed` when BOTH parties have marked done.
+      // This is the "both_done_to_completed" system transition; we run it inside the
+      // same txn so the client sees the final state in one round trip.
+      if (
+        (next === 'awaiting_employer_confirm' || next === 'awaiting_worker_confirm') &&
+        updated.workerMarkedDoneAt &&
+        updated.employerMarkedDoneAt
+      ) {
+        await tx.assignment.update({
+          where: { id: args.assignmentId },
+          data: {
+            status: 'completed' satisfies AssignmentStatus,
+            completedAt: new Date(),
+            version: { increment: 1 },
+          },
+        });
+        await emitEvent(tx, {
+          eventType: 'assignment.both_done_to_completed',
+          actorId: null,
+          refType: 'assignment',
+          refId: args.assignmentId,
+        });
+        return 'completed' satisfies AssignmentStatus;
+      }
+      return next;
     });
 
-    return ok({ status: next });
+    return ok({ status: finalStatus });
   },
 };
 

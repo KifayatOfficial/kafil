@@ -89,16 +89,19 @@ export const transitions: readonly TransitionDef[] = [
     by: ['worker', 'employer'],
     guards: [],
   },
+  // §4 — "mark done" works from in_progress AND from the awaiting_* state where the
+  // counter-party has already marked done. In the latter case the service layer detects
+  // both timestamps set and rolls forward to `completed` (see assignment.service.ts).
   {
     name: 'worker_mark_done',
-    from: ['in_progress'],
+    from: ['in_progress', 'awaiting_worker_confirm'],
     to: 'awaiting_employer_confirm',
     by: ['worker'],
     guards: ['idempotent'],
   },
   {
     name: 'employer_mark_done',
-    from: ['in_progress'],
+    from: ['in_progress', 'awaiting_employer_confirm'],
     to: 'awaiting_worker_confirm',
     by: ['employer'],
     guards: ['idempotent'],
