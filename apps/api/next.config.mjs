@@ -7,5 +7,6 @@ const nextConfig = {
   },
   // Surface server crashes loudly in dev.
   reactStrictMode: true,
+  // instrumentation.ts in src/ — Next 16 reads it automatically.
 };
 export default nextConfig;

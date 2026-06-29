@@ -5,6 +5,8 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
+    // Browser globals (window, localStorage, etc.) for client components.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "plugins": [{ "name": "next" }]
   },
   "include": ["src/**/*", "next-env.d.ts", ".next/types/**/*.ts"]

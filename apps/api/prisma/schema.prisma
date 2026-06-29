@@ -578,7 +578,9 @@ model ModerationAction {
   actorId    String?  @map("actor_id") @db.Uuid
   targetType String?  @map("target_type") @db.VarChar(16)
   targetId   String?  @map("target_id") @db.Uuid
-  action     String   @db.VarChar(24)
+  // Action is a colon-namespaced verb; resolutions can be long (e.g.
+  // "resolve:complete_in_active_party_favor" = 40 chars). 80 leaves real headroom.
+  action     String   @db.VarChar(80)
   reason     String?
   expiresAt  DateTime? @map("expires_at") @db.Timestamptz
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
