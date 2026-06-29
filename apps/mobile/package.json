@@ -11,10 +11,14 @@
   "dependencies": {
     "@kafil/core": "*",
     "expo": "~51.0.0",
+    "expo-av": "~14.0.7",
     "expo-constants": "^16.0.2",
+    "expo-haptics": "~13.0.1",
     "expo-status-bar": "~1.12.0",
+    "lottie-react-native": "^7.0.0",
     "react": "18.2.0",
-    "react-native": "0.74.5"
+    "react-native": "0.74.5",
+    "react-native-reanimated": "~3.10.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

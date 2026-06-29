@@ -1,10 +1,16 @@
 // First bootable shell: pings the API, shows the first job from packages/core's typed contract.
-// Markhor mascot Lottie + motion classes wire in once we add lottie-react-native + Reanimated (Tier-B).
+// Mascot Lottie + motion classes now wired (§27).
 import { useEffect, useState } from 'react';
-import { Text, View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { Pressable, Text, View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
+import { KafilLottie } from './src/motion/KafilLottie';
+import { usePressScale } from './src/motion/animations';
+import { haptic } from './src/motion/feedback';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mascotIdle = require('./assets/lottie/mascot_idle.json');
 
 type Job = {
   id: string;
@@ -33,8 +39,20 @@ export default function App() {
   return (
     <View style={styles.root}>
       <StatusBar style="auto" />
-      <Text style={styles.h1}>{t('app.name')}</Text>
-      <Text style={styles.muted}>Mobile shell — Expo Go can preview this.</Text>
+
+      {/* §27.6 — mascot idle loop at top, class-E */}
+      <View style={styles.mascotRow}>
+        <KafilLottie
+          source={mascotIdle}
+          motionClass={motion.MotionClass.E_MASCOT}
+          style={styles.mascot}
+          loop
+        />
+        <View style={{ marginLeft: 12 }}>
+          <Text style={styles.h1}>{t('app.name')}</Text>
+          <Text style={styles.muted}>Mobile shell — Expo Go can preview this.</Text>
+        </View>
+      </View>
 
       <ScrollView style={{ marginTop: 16, alignSelf: 'stretch' }}>
         {error ? (
@@ -47,17 +65,33 @@ export default function App() {
         ) : jobs.length === 0 ? (
           <Text style={styles.muted}>{i18n.t('ps', 'empty.no_jobs')}</Text>
         ) : (
-          jobs.map((j) => (
-            <View key={j.id} style={styles.card}>
-              <Text style={styles.title}>{j.title}</Text>
-              <Text style={styles.muted}>
-                {j.ratePkr} PKR / {j.rateUnit} · {j.status}
-              </Text>
-            </View>
-          ))
+          jobs.map((j) => <JobCard key={j.id} job={j} />)
         )}
       </ScrollView>
     </View>
+  );
+}
+
+// §27.3 class-A press feedback wired on each card.
+function JobCard({ job }: { job: Job }) {
+  const { scale, onPressIn, onPressOut } = usePressScale();
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        onPressIn();
+        void haptic(motion.hapticToken.TAP_LIGHT);
+      }}
+      onPressOut={onPressOut}
+    >
+      <Animated.View style={[styles.card, animatedStyle]}>
+        <Text style={styles.title}>{job.title}</Text>
+        <Text style={styles.muted}>
+          {job.ratePkr} PKR / {job.rateUnit} · {job.status}
+        </Text>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -69,6 +103,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'flex-start',
   },
+  mascotRow: { flexDirection: 'row', alignItems: 'center' },
+  mascot: { width: 72, height: 72 },
   h1: { fontSize: 28, fontWeight: '700', color: motion.color.text },
   muted: { color: '#888', fontSize: 13 },
   card: {
