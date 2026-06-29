@@ -24,6 +24,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { ReportSheet } from '../components/ReportSheet';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -55,6 +56,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [proposedRate, setProposedRate] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -165,7 +167,11 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
 
             {/* §10/F1 — explicit reassurance, surfaced once not buried in T&Cs */}
             <Text style={styles.safetyNote}>
-              KAFIL never asks workers to pay to apply. If anyone requests a fee, report them.
+              KAFIL never asks workers to pay to apply. If anyone requests a fee,{' '}
+              <Text style={styles.reportLink} onPress={() => setReportOpen(true)}>
+                {i18n.t('ps', 'safety.report_job')}
+              </Text>
+              .
             </Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -202,6 +208,13 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
           </ScrollView>
         )}
       </View>
+
+      <ReportSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="job"
+        targetId={jobId}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -269,6 +282,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 16,
     fontStyle: 'italic',
+  },
+  reportLink: {
+    color: motion.color.danger,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+    fontStyle: 'normal',
   },
   error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
   cta: {

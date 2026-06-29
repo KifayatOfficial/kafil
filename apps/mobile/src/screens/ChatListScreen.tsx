@@ -43,9 +43,13 @@ export function ChatListScreen({ onBack }: Props) {
   }, [load]);
 
   if (openId) {
+    const conv = items?.find((c) => c.id === openId);
+    const other = conv?.participants.find((p) => p.userId !== me);
     return (
       <ChatScreen
         conversationId={openId}
+        otherUserId={other?.userId ?? null}
+        otherName={other?.user.displayName ?? null}
         onBack={() => {
           setOpenId(null);
           void load();

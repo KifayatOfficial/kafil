@@ -21,10 +21,11 @@ import {
   View,
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion, randomUUID } from '@kafil/core';
+import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
+import { ReportSheet } from '../components/ReportSheet';
 
 interface Msg {
   id: string;
@@ -37,12 +38,15 @@ interface Msg {
 
 interface Props {
   conversationId: string;
+  /** The other participant — enables report/block. Null only if not yet resolved. */
+  otherUserId?: string | null;
+  otherName?: string | null;
   onBack: () => void;
 }
 
 const POLL_MS = 4_000;
 
-export function ChatScreen({ conversationId, onBack }: Props) {
+export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
   const { api, session } = useAuth();
   const me = session?.userId ?? '';
 
@@ -51,6 +55,8 @@ export function ChatScreen({ conversationId, onBack }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showedRedactedWarning, setShowedRedactedWarning] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
 
   const load = useCallback(async () => {
@@ -116,7 +122,13 @@ export function ChatScreen({ conversationId, onBack }: Props) {
             <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
           </Pressable>
           <Text style={styles.h1}>Chat</Text>
-          <View style={{ width: 60 }} />
+          {otherUserId ? (
+            <Pressable onPress={() => setReportOpen(true)} hitSlop={16} accessibilityLabel="Report or block">
+              <Text style={{ color: motion.color.danger, fontSize: 22, width: 60, textAlign: 'right' }}>⚑</Text>
+            </Pressable>
+          ) : (
+            <View style={{ width: 60 }} />
+          )}
         </View>
 
         {showedRedactedWarning ? (
@@ -125,6 +137,12 @@ export function ChatScreen({ conversationId, onBack }: Props) {
               KAFIL hides contact info in chat until a job is confirmed — this protects you
               and keeps disputes resolvable.
             </Text>
+          </View>
+        ) : null}
+
+        {blocked ? (
+          <View style={styles.blockedNotice}>
+            <Text style={styles.blockedNoticeText}>{i18n.t('ps', 'safety.blocked_notice')}</Text>
           </View>
         ) : null}
 
@@ -151,6 +169,7 @@ export function ChatScreen({ conversationId, onBack }: Props) {
             style={styles.input}
             multiline
             maxLength={4000}
+            editable={!blocked}
           />
           <Pressable
             onPress={send}
@@ -159,7 +178,7 @@ export function ChatScreen({ conversationId, onBack }: Props) {
               void haptic(motion.hapticToken.TAP_LIGHT);
             }}
             onPressOut={onPressOut}
-            disabled={!draft.trim() || sending}
+            disabled={!draft.trim() || sending || blocked}
           >
             <Animated.View
               style={[
@@ -177,6 +196,17 @@ export function ChatScreen({ conversationId, onBack }: Props) {
           </Pressable>
         </View>
       </View>
+
+      {otherUserId ? (
+        <ReportSheet
+          visible={reportOpen}
+          onClose={() => setReportOpen(false)}
+          targetType="user"
+          targetId={otherUserId}
+          blockableUserId={otherUserId}
+          onBlocked={() => setBlocked(true)}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -216,6 +246,16 @@ const styles = StyleSheet.create({
     borderColor: motion.color.warning,
   },
   redactWarnText: { color: motion.color.text, fontSize: 12 },
+  blockedNotice: {
+    backgroundColor: '#f7e3e0',
+    padding: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: motion.radius.md,
+    borderWidth: 1,
+    borderColor: motion.color.danger,
+  },
+  blockedNoticeText: { color: motion.color.danger, fontSize: 12, textAlign: 'center' },
   muted: { color: '#888', textAlign: 'center', marginTop: 40 },
   bubble: {
     padding: 10,
