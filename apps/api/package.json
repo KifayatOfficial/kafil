@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev && psql \"$DATABASE_URL\" -f prisma/sql/001_partial_indexes.sql",
     "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:demo": "tsx prisma/seed-demo.ts"
   },
   "dependencies": {
     "@kafil/core": "*",
