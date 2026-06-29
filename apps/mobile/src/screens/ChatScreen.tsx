@@ -10,7 +10,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,6 +22,7 @@ import {
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
+import { useOutbox } from '../outbox/OutboxContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { ReportSheet } from '../components/ReportSheet';
@@ -46,14 +46,25 @@ interface Props {
 
 const POLL_MS = 4_000;
 
+/** A message bubble unified across server-confirmed and locally-queued messages. */
+interface UiMsg {
+  id: string;
+  senderId: string;
+  body: string | null;
+  flagged: boolean;
+  /** undefined = server-confirmed; otherwise the queued op's lifecycle. */
+  pending?: 'queued' | 'sending' | 'failed';
+  /** Present only on a failed bubble — re-queues the text under a fresh key. */
+  onRetry?: () => void;
+}
+
 export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
   const { api, session, lang } = useAuth();
+  const { enqueue, ops, online, prune } = useOutbox();
   const me = session?.userId ?? '';
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showedRedactedWarning, setShowedRedactedWarning] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -74,39 +85,111 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
     return () => clearInterval(t);
   }, [load]);
 
+  // Queued message ops for THIS conversation, oldest-first (send order).
+  const myMsgOps = ops
+    .filter((o) => o.kind === 'message' && (o.meta?.conversationId as string | undefined) === conversationId)
+    .sort((a, b) => a.createdAt - b.createdAt);
+
+  /** The server messageId a done op created (from its captured response), if any. */
+  const serverIdOf = (op: { response?: unknown }): string | undefined =>
+    (op.response as { value?: { messageId?: string } } | undefined)?.value?.messageId;
+
+  // Deterministic reconciliation: a 'done' op is only pruned once the polled list
+  // actually contains the message it created (matched by the server messageId the op
+  // captured). This avoids the flicker of pruning on a timer before the server copy
+  // arrives — the optimistic bubble hands off to the real one with no gap.
+  const polledIds = new Set(messages.map((m) => m.id));
   useEffect(() => {
-    // Scroll to bottom when new messages arrive.
+    const landed = myMsgOps
+      .filter((o) => o.status === 'done')
+      .filter((o) => {
+        const sid = serverIdOf(o);
+        return sid != null && polledIds.has(sid);
+      })
+      .map((o) => o.id);
+    if (landed.length) void prune(landed);
+  }, [myMsgOps, polledIds, prune]);
+
+  // Surface the redaction warning once, when any queued message comes back flagged.
+  // (The server marks flagged on the polled copy; we also trust a done op's outcome.)
+  useEffect(() => {
+    if (showedRedactedWarning) return;
+    if (messages.some((m) => m.flagged && m.senderId === me)) setShowedRedactedWarning(true);
+  }, [messages, me, showedRedactedWarning]);
+
+  // Merge server messages with optimistic bubbles. We show every op that isn't yet
+  // represented in the polled list: pending/sending/failed always, and 'done' only
+  // until its server copy lands (matched by captured messageId) — so there's never a
+  // duplicate and never a gap.
+  const unified: UiMsg[] = [
+    ...messages.map((m) => ({ id: m.id, senderId: m.senderId, body: m.body, flagged: m.flagged })),
+    ...myMsgOps
+      .filter((o) => {
+        if (o.status !== 'done') return true;
+        const sid = serverIdOf(o);
+        return !(sid != null && polledIds.has(sid)); // hide once the real copy arrived
+      })
+      .map((o) => ({
+        id: o.id,
+        senderId: me,
+        body: (o.body as { body?: string }).body ?? '',
+        flagged: false,
+        // 'done' (sent, awaiting the polled copy) shows no indicator; otherwise
+        // failed / sending / queued reflect the op's live state.
+        pending: (o.status === 'done'
+          ? undefined
+          : o.status === 'failed'
+            ? 'failed'
+            : online
+              ? 'sending'
+              : 'queued') as UiMsg['pending'],
+        onRetry: o.status === 'failed' ? () => void retryFailed(o) : undefined,
+      })),
+  ];
+
+  useEffect(() => {
+    // Scroll to bottom when the rendered count changes.
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
-  }, [messages.length]);
+  }, [unified.length]);
+
+  // §13 — optimistic enqueue. A message shows immediately as a pending bubble and
+  // sends in order when online; offline it simply waits. The op id is the idempotency
+  // key the route dedupes on, so a flush re-send never double-posts.
+  const enqueueMessage = useCallback(
+    async (text: string) => {
+      const key = randomUUID();
+      await enqueue({
+        method: 'POST',
+        path: `/api/conversations/${conversationId}/messages`,
+        body: { body: text, idempotency_key: key },
+        kind: 'message',
+        id: key,
+        meta: { conversationId },
+      });
+      // Pull the server copy shortly after a successful online send so redaction +
+      // ordering reconcile quickly (the poll also covers this on a 4s cadence).
+      if (online) setTimeout(() => void load(), 400);
+    },
+    [enqueue, conversationId, online, load],
+  );
 
   const send = async () => {
     const body = draft.trim();
-    if (!body || sending) return;
-    setSending(true);
-    setError(null);
+    if (!body) return;
     void haptic(motion.hapticToken.TAP_LIGHT);
-
-    const key = randomUUID();
-    const r = await api.post<{ ok: true; value: { messageId: string; flagged: boolean } }>(
-      `/api/conversations/${conversationId}/messages`,
-      { body, idempotency_key: key },
-      { idempotencyKey: key },
-    );
-
-    if (r.success) {
-      const value = (r.data as { value: { flagged: boolean } }).value;
-      setDraft('');
-      if (value.flagged && !showedRedactedWarning) {
-        setShowedRedactedWarning(true);
-      }
-      await load();
-      void haptic(motion.hapticToken.SUCCESS);
-    } else {
-      void haptic(motion.hapticToken.ERROR);
-      setError((r.data as { message?: string }).message ?? `send failed (${r.status})`);
-    }
-    setSending(false);
+    await enqueueMessage(body);
+    setDraft('');
   };
+
+  // Retry a failed send: drop the dead op and re-queue its text under a fresh key.
+  const retryFailed = useCallback(
+    async (op: { id: string; body: unknown }) => {
+      const text = (op.body as { body?: string }).body ?? '';
+      await prune([op.id]);
+      if (text) await enqueueMessage(text);
+    },
+    [prune, enqueueMessage],
+  );
 
   const { scale, onPressIn, onPressOut } = usePressScale();
   const sendAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -152,14 +235,12 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
           contentContainerStyle={{ padding: 16, gap: 6 }}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {messages.length === 0 ? (
+          {unified.length === 0 ? (
             <Text style={styles.muted}>{i18n.t(lang, 'chat.welcome')}</Text>
           ) : (
-            messages.map((m) => <Bubble key={m.id} msg={m} isMe={m.senderId === me} />)
+            unified.map((m) => <Bubble key={m.id} msg={m} isMe={m.senderId === me} lang={lang} />)
           )}
         </ScrollView>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.composer}>
           <TextInput
@@ -178,21 +259,15 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
               void haptic(motion.hapticToken.TAP_LIGHT);
             }}
             onPressOut={onPressOut}
-            disabled={!draft.trim() || sending || blocked}
+            disabled={!draft.trim() || blocked}
             accessibilityLabel={i18n.t(lang, 'common.send')}
           >
             <Animated.View
-              style={[
-                styles.sendBtn,
-                (!draft.trim() || sending) && styles.sendBtnDisabled,
-                sendAnim,
-              ]}
+              style={[styles.sendBtn, !draft.trim() && styles.sendBtnDisabled, sendAnim]}
             >
-              {sending ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.sendBtnText}>{i18n.t(lang, 'common.send')}</Text>
-              )}
+              {/* §13 — send is optimistic: the queued bubble is the feedback, not a
+                  blocking spinner. The button stays responsive even offline. */}
+              <Text style={styles.sendBtnText}>{i18n.t(lang, 'common.send')}</Text>
             </Animated.View>
           </Pressable>
         </View>
@@ -212,18 +287,41 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
   );
 }
 
-function Bubble({ msg, isMe }: { msg: Msg; isMe: boolean }) {
+function Bubble({
+  msg,
+  isMe,
+  lang,
+}: {
+  msg: UiMsg;
+  isMe: boolean;
+  lang: import('@kafil/core').Lang;
+}) {
   // body is already redacted by the server before it reaches us (§5/§24/B1).
+  const failed = msg.pending === 'failed';
   return (
-    <View
+    <Pressable
+      onPress={failed ? msg.onRetry : undefined}
+      disabled={!failed}
+      accessibilityLabel={failed ? i18n.t(lang, 'chat.send_failed') : undefined}
       style={[
         styles.bubble,
         isMe ? styles.bubbleMe : styles.bubbleThem,
         msg.flagged ? styles.bubbleFlagged : null,
+        msg.pending && msg.pending !== 'failed' ? styles.bubblePending : null,
+        failed ? styles.bubbleFailed : null,
       ]}
     >
       <Text style={[styles.bubbleText, isMe && { color: 'white' }]}>{msg.body}</Text>
-    </View>
+      {msg.pending ? (
+        <Text style={[styles.bubbleStatus, isMe && { color: 'rgba(255,255,255,0.85)' }]}>
+          {failed
+            ? i18n.t(lang, 'chat.send_failed')
+            : msg.pending === 'queued'
+              ? `⏳ ${i18n.t(lang, 'offline.queued')}`
+              : i18n.t(lang, 'chat.sending')}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -273,7 +371,10 @@ const styles = StyleSheet.create({
     backgroundColor: motion.color.surface,
   },
   bubbleFlagged: { borderColor: motion.color.warning, borderWidth: 1 },
+  bubblePending: { opacity: 0.6 },
+  bubbleFailed: { borderColor: motion.color.danger, borderWidth: 1 },
   bubbleText: { color: motion.color.text, fontSize: 15 },
+  bubbleStatus: { fontSize: 10, marginTop: 3, color: '#888' },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -303,9 +404,4 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: '#bbb' },
   sendBtnText: { color: 'white', fontWeight: '700' },
-  error: {
-    color: motion.color.danger,
-    textAlign: 'center',
-    paddingVertical: 6,
-  },
 });

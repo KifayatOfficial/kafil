@@ -65,6 +65,13 @@ export interface OutboxOp {
   nextAttemptAt: number;
   /** Terminal-state detail for the UI: HTTP status + server code/message. */
   outcome?: { status: number; code?: string; message?: string };
+  /**
+   * On success ('done'), the server's response payload (the api-client's `data`).
+   * Lets callers reconcile the optimistic UI deterministically — e.g. read back the
+   * created `messageId`/`applicationId` and keep the optimistic row until the polled
+   * server copy with that id arrives, instead of pruning blind on a timer.
+   */
+  response?: unknown;
 }
 
 /** Persistence is injected so the engine stays platform-free (P2). */
@@ -309,6 +316,7 @@ export class Outbox {
     if (res.success || (res.status >= 200 && res.status < 300)) {
       op.status = 'done';
       op.outcome = { status: res.status };
+      op.response = res.data;
       return;
     }
 

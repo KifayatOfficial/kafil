@@ -54,7 +54,7 @@ type Phase = 'loading' | 'ready' | 'applying' | 'queued' | 'applied' | 'stale' |
 
 export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
   const { api, lang } = useAuth();
-  const { enqueue, ops, online } = useOutbox();
+  const { enqueue, ops, online, prune } = useOutbox();
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +73,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
     if (trackedOp.status === 'done') {
       void haptic(motion.hapticToken.SUCCESS);
       setPhase('applied');
+      void prune([trackedOp.id]); // outcome consumed — don't let it linger in storage
       const t = setTimeout(onApplied, 1500);
       return () => clearTimeout(t);
     }
@@ -80,18 +81,20 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
       // §26/M12 — lost the race (job filled / duplicate application). Soft state.
       void haptic(motion.hapticToken.WARNING);
       setPhase('stale');
+      void prune([trackedOp.id]);
       return;
     }
     if (trackedOp.status === 'failed') {
       void haptic(motion.hapticToken.ERROR);
       setError(trackedOp.outcome?.message ?? `apply failed (${trackedOp.outcome?.status ?? 0})`);
       setPhase('error');
+      void prune([trackedOp.id]);
       return;
     }
     // Still pending/sending: show "applying" when we have a live connection, else
     // "queued — will send when you're back online".
     setPhase(online ? 'applying' : 'queued');
-  }, [trackedOp, online, onApplied]);
+  }, [trackedOp, online, onApplied, prune]);
 
   useEffect(() => {
     (async () => {

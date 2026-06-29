@@ -122,6 +122,18 @@ describe('Outbox — flush, success & ordering', () => {
     expect(ob.pending()).toHaveLength(0);
   });
 
+  it('captures the server response payload on a done op (for deterministic dedup)', async () => {
+    const s = scriptedSender();
+    s.script(result(201, { ok: true, value: { messageId: 'm-99' } }));
+    const ob = new Outbox({ persistence: new MemPersistence(), sender: s.send, idFactory: seqId });
+    await ob.enqueue({ method: 'POST', path: '/conversations/c1/messages', kind: 'message' });
+    ob.setOnline(true);
+    await ob.flush();
+    const op = first(ob);
+    expect(op.status).toBe('done');
+    expect(op.response).toMatchObject({ value: { messageId: 'm-99' } });
+  });
+
   it('auto-flushes on enqueue when already online', async () => {
     const s = scriptedSender();
     const ob = new Outbox({ persistence: new MemPersistence(), sender: s.send, idFactory: seqId });

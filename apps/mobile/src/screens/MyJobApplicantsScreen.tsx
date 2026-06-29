@@ -6,7 +6,7 @@
 // or the slot was filled between view and accept), the server returns 409 and we soft-
 // reload (§24/A4 / §26/M12-style UX).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +19,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { SkeletonList } from '../components/Skeleton';
 import { useAuth } from '../auth/AuthContext';
+import { useOutbox, findOp } from '../outbox/OutboxContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 
@@ -66,10 +67,13 @@ interface Props {
 
 export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
   const { api, lang } = useAuth();
+  const { enqueue, ops, online, prune } = useOutbox();
   const [job, setJob] = useState<JobDetail | null>(null);
   const [applicants, setApplicants] = useState<Applicant[] | null>(null);
-  const [acceptingAppId, setAcceptingAppId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Op ids whose terminal outcome we've already reconciled — so the effect reloads
+  // (and haptic-fires) once per resolution, not on every ops snapshot.
+  const reconciled = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const [jobR, appsR] = await Promise.all([
@@ -86,41 +90,71 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
     void load();
   }, [load]);
 
+  // Reconcile server-authoritative outcomes of queued accepts (§13/§14). A queued
+  // accept carries the slot's expected version, so a lost race resolves to a clean
+  // 409→conflict here — never a silent over-hire past headcount.
+  useEffect(() => {
+    const mine = ops.filter(
+      (o) => o.kind === 'accept' && (o.meta?.jobId as string | undefined) === jobId,
+    );
+    for (const op of mine) {
+      const terminal = op.status === 'done' || op.status === 'conflict' || op.status === 'failed';
+      if (!terminal || reconciled.current.has(op.id)) continue;
+      reconciled.current.add(op.id);
+      if (op.status === 'done') {
+        void haptic(motion.hapticToken.SUCCESS);
+        void load();
+      } else if (op.status === 'conflict') {
+        void haptic(motion.hapticToken.WARNING);
+        setError('Slot was taken by another action. Refreshing…');
+        void load();
+      } else {
+        void haptic(motion.hapticToken.ERROR);
+        setError(op.outcome?.message ?? `accept failed (${op.outcome?.status ?? 0})`);
+      }
+      // Terminal outcome consumed (UI reloaded / error shown) — drop it so the
+      // queue doesn't grow unbounded across many accepts.
+      void prune([op.id]);
+    }
+  }, [ops, jobId, load, prune]);
+
+  /** A live (pending/sending) queued accept for this applicant, if any. */
+  const pendingAcceptFor = (appId: string) =>
+    findOp(
+      ops,
+      'accept',
+      (m) => (m?.appId as string | undefined) === appId,
+    );
+
   const accept = async (appId: string) => {
-    if (!job || acceptingAppId) return;
+    if (!job) return;
+    // Guard double-tap: an in-flight accept for this applicant already exists.
+    const existing = pendingAcceptFor(appId);
+    if (existing && (existing.status === 'pending' || existing.status === 'sending')) return;
     const openSlot = job.slots.find((s) => s.status === 'open');
     if (!openSlot) {
       setError('All slots are filled.');
       return;
     }
-    setAcceptingAppId(appId);
     setError(null);
     void haptic(motion.hapticToken.TAP_MEDIUM);
 
     const key = randomUUID();
-    const r = await api.post(
-      `/api/applications/${appId}/accept`,
-      {
+    // §13 — optimistic enqueue. expected_slot_version travels with the op, so the
+    // optimistic lock still arbitrates even when the accept was queued offline.
+    await enqueue({
+      method: 'POST',
+      path: `/api/applications/${appId}/accept`,
+      body: {
         slot_id: openSlot.id,
         expected_slot_version: openSlot.version,
         idempotency_key: key,
       },
-      { idempotencyKey: key },
-    );
-
-    if (r.success) {
-      void haptic(motion.hapticToken.SUCCESS);
-      // refresh both lists
-      await load();
-    } else if (r.status === 409) {
-      void haptic(motion.hapticToken.WARNING);
-      setError('Slot version changed (someone else acted). Refreshing…');
-      await load();
-    } else {
-      void haptic(motion.hapticToken.ERROR);
-      setError((r.data as { message?: string }).message ?? `accept failed (${r.status})`);
-    }
-    setAcceptingAppId(null);
+      kind: 'accept',
+      id: key,
+      meta: { appId, jobId },
+    });
+    if (!online) setError(i18n.t(lang, 'offline.banner'));
   };
 
   return (
@@ -156,16 +190,21 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
         ) : applicants.length === 0 ? (
           <Text style={styles.muted}>{i18n.t(lang, 'applicants.empty')}</Text>
         ) : (
-          applicants.map((a) => (
-            <ApplicantCard
-              key={a.id}
-              app={a}
-              lang={lang}
-              accepting={acceptingAppId === a.id}
-              canAccept={(job?.slots.some((s) => s.status === 'open') ?? false) && a.status === 'pending'}
-              onAccept={() => accept(a.id)}
-            />
-          ))
+          applicants.map((a) => {
+            const op = pendingAcceptFor(a.id);
+            const inFlight = op?.status === 'pending' || op?.status === 'sending';
+            return (
+              <ApplicantCard
+                key={a.id}
+                app={a}
+                lang={lang}
+                accepting={inFlight ?? false}
+                queuedOffline={inFlight === true && !online}
+                canAccept={(job?.slots.some((s) => s.status === 'open') ?? false) && a.status === 'pending'}
+                onAccept={() => accept(a.id)}
+              />
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -176,12 +215,14 @@ function ApplicantCard({
   app,
   lang,
   accepting,
+  queuedOffline,
   canAccept,
   onAccept,
 }: {
   app: Applicant;
   lang: import('@kafil/core').Lang;
   accepting: boolean;
+  queuedOffline: boolean;
   canAccept: boolean;
   onAccept: () => void;
 }) {
@@ -219,7 +260,9 @@ function ApplicantCard({
             animated,
           ]}
         >
-          {accepting ? (
+          {queuedOffline ? (
+            <Text style={styles.acceptBtnText}>{i18n.t(lang, 'offline.queued')}</Text>
+          ) : accepting ? (
             <ActivityIndicator color="white" />
           ) : (
             <Text style={styles.acceptBtnText}>

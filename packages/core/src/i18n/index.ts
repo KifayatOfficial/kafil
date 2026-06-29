@@ -87,7 +87,9 @@ type StringKey =
   | 'offline.apply_will_send'
   | 'offline.queued'
   | 'offline.banner'
-  | 'chat.no_messages';
+  | 'chat.no_messages'
+  | 'chat.sending'
+  | 'chat.send_failed';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -174,6 +176,8 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'offline.queued': 'په قطار کې — به ولېږل شي',
     'offline.banner': 'آفلاین — بدلونونه ساتل کیږي',
     'chat.no_messages': 'تر اوسه پیغام نشته',
+    'chat.sending': 'لېږل کیږي…',
+    'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
   },
   ur: {
     'app.name': 'کافل',
@@ -259,6 +263,8 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'offline.queued': 'قطار میں — بھیجی جائے گی',
     'offline.banner': 'آف لائن — تبدیلیاں محفوظ ہو رہی ہیں',
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
+    'chat.sending': 'بھیجا جا رہا ہے…',
+    'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
   },
   en: {
     'app.name': 'KAFIL',
@@ -344,6 +350,8 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'offline.queued': 'Queued — will send',
     'offline.banner': 'Offline — your changes are saved',
     'chat.no_messages': 'No messages yet',
+    'chat.sending': 'Sending…',
+    'chat.send_failed': "Didn't send — tap to retry",
   },
 };
 
