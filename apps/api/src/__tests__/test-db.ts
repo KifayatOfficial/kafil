@@ -51,6 +51,7 @@ export async function cleanupTestData() {
   await prisma.chargeback.deleteMany({});
   await prisma.payout.deleteMany({});
   await prisma.payment.deleteMany({});
+  await prisma.webhookEvent.deleteMany({}); // dedupe table — clear so reruns don't false-dedupe
   await prisma.wallet.deleteMany({});
   await prisma.notificationDelivery.deleteMany({}); // FK on notifications
   await prisma.notification.deleteMany({}); // FK on users

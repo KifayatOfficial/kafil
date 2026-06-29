@@ -145,6 +145,132 @@ export const escrowService = {
   },
 
   /**
+   * Begin ASYNC escrow funding (the production path). Creates a `pending` Payment row
+   * for the job's expected gross and returns its id — the client hands this to the PSP
+   * (JazzCash/Easypaisa) and the money only lands in escrow when the PSP confirms via
+   * the signed webhook (webhook.service → completeFundingForPayment). The ledger is NOT
+   * touched here: we never hold money we haven't actually received.
+   *
+   * Idempotent: a job that already has a pending/succeeded funding Payment returns it
+   * rather than creating a duplicate.
+   */
+  async initiateFunding(args: {
+    jobId: string;
+    employerId: string;
+  }): Promise<Result<{ paymentId: string; amountMinor: string; status: string }>> {
+    const job = await prisma.job.findUnique({
+      where: { id: args.jobId },
+      select: { id: true, employerId: true, paymentMode: true, ratePkr: true, durationDays: true, headcount: true },
+    });
+    if (!job) return err('NOT_FOUND', 'job not found');
+    if (job.employerId !== args.employerId) return err('FORBIDDEN', 'not your job');
+    if (job.paymentMode !== 'escrow') return err('CONFLICT', 'job is not escrow-mode');
+
+    const target = jobExpectedGrossMinor({
+      ratePkr: job.ratePkr,
+      durationDays: job.durationDays,
+      headcount: job.headcount,
+    });
+
+    const existing = await prisma.payment.findFirst({
+      where: { refType: 'job', refId: job.id, status: { in: ['pending', 'succeeded'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) {
+      return ok({ paymentId: existing.id, amountMinor: existing.amountMinor.toString(), status: existing.status });
+    }
+
+    const payment = await prisma.payment.create({
+      data: {
+        userId: args.employerId,
+        amountMinor: target,
+        provider: 'pending_psp',
+        status: 'pending',
+        refType: 'job',
+        refId: job.id,
+        idempotencyKey: `fund-job-${job.id}`,
+      },
+    });
+    await emitEvent(prisma, {
+      eventType: 'escrow.funding_initiated',
+      actorId: args.employerId,
+      refType: 'payment',
+      refId: payment.id,
+      payload: { job_id: job.id, amount_minor: target.toString() },
+    });
+    return ok({ paymentId: payment.id, amountMinor: target.toString(), status: 'pending' });
+  },
+
+  /**
+   * Complete async funding for a confirmed Payment (called by the webhook handler).
+   * Marks the Payment succeeded and credits escrow_holding via the ledger, idempotently
+   * (a Payment already 'succeeded' is a no-op). All in one txn so the money record and
+   * the ledger move together. Returns the funded amount.
+   */
+  async completeFundingForPayment(args: {
+    paymentId: string;
+    confirmedAmountMinor?: bigint;
+  }): Promise<Result<{ fundedMinor: string; alreadyDone: boolean }>> {
+    return prisma
+      .$transaction(async (tx) => {
+        // Lock the payment row so concurrent webhook deliveries serialize.
+        await tx.$queryRaw`SELECT id FROM payments WHERE id = ${args.paymentId}::uuid FOR UPDATE`;
+        const payment = await tx.payment.findUnique({ where: { id: args.paymentId } });
+        if (!payment) return err('NOT_FOUND', 'payment not found');
+        if (payment.refType !== 'job' || !payment.refId) {
+          return err('CONFLICT', 'payment is not a job funding');
+        }
+        if (payment.status === 'succeeded') {
+          return ok({ fundedMinor: payment.amountMinor.toString(), alreadyDone: true });
+        }
+        if (payment.status !== 'pending') {
+          return err('CONFLICT', `payment is ${payment.status}, not fundable`);
+        }
+
+        // The amount we credit is the Payment's expected amount; if the PSP reports a
+        // different confirmed amount, trust the confirmation (partial funding is a
+        // future concern — for now require an exact match to avoid silent shortfalls).
+        const amount = payment.amountMinor as bigint;
+        if (args.confirmedAmountMinor != null && args.confirmedAmountMinor !== amount) {
+          return err('CONFLICT', 'confirmed amount does not match expected');
+        }
+
+        await fundEscrowLedger(tx, { amountMinor: amount, refType: 'job', refId: payment.refId });
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: 'succeeded', provider: payment.provider },
+        });
+        await emitEvent(tx, {
+          eventType: 'escrow.funded',
+          actorId: payment.userId,
+          refType: 'job',
+          refId: payment.refId,
+          payload: { amount_minor: amount.toString(), via: 'webhook', payment_id: payment.id },
+        });
+        return ok({ fundedMinor: amount.toString(), alreadyDone: false });
+      })
+      .catch((e) => {
+        throw e;
+      });
+  },
+
+  /** Mark a funding Payment failed (PSP reported failure). Idempotent. */
+  async failFundingForPayment(args: { paymentId: string }): Promise<Result<{ ok: true }>> {
+    const payment = await prisma.payment.findUnique({ where: { id: args.paymentId } });
+    if (!payment) return err('NOT_FOUND', 'payment not found');
+    if (payment.status === 'pending') {
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: 'failed' } });
+      await emitEvent(prisma, {
+        eventType: 'escrow.funding_failed',
+        actorId: payment.userId,
+        refType: 'payment',
+        refId: payment.id,
+      });
+    }
+    return ok({ ok: true });
+  },
+
+  /**
    * Release escrow on assignment completion. Pays the worker (gross − commission)
    * and credits the platform commission. Idempotent by checking the assignment's
    * prior escrow_release entries.
