@@ -31,7 +31,18 @@ type StringKey =
   | 'safety.reason_spam'
   | 'safety.reason_other'
   | 'safety.submitted'
-  | 'safety.submitted_body';
+  | 'safety.submitted_body'
+  | 'wallet.title'
+  | 'wallet.balance'
+  | 'wallet.withdraw'
+  | 'wallet.amount'
+  | 'wallet.withdraw_all'
+  | 'wallet.recent'
+  | 'wallet.none'
+  | 'wallet.sent'
+  | 'wallet.kyc_required'
+  | 'wallet.cooldown'
+  | 'wallet.success_title';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -62,6 +73,17 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'safety.reason_other': 'بل څه',
     'safety.submitted': 'مننه',
     'safety.submitted_body': 'ستاسو راپور مو ترلاسه کړ. زموږ ټیم به یې وګوري.',
+    'wallet.title': 'زما بټوه',
+    'wallet.balance': 'موجوده بیلانس',
+    'wallet.withdraw': 'پیسې وباسئ',
+    'wallet.amount': 'اندازه (روپۍ)',
+    'wallet.withdraw_all': 'ټول وباسئ',
+    'wallet.recent': 'وروستي اخیستنې',
+    'wallet.none': 'تر اوسه هیڅ اخیستنه نشته',
+    'wallet.sent': 'ولېږل شو',
+    'wallet.kyc_required': 'د پیسو ایستلو لپاره د شناختي کارت تصدیق اړین دی',
+    'wallet.cooldown': 'د نوي وسیلې له امله د پیسو حرکت ۲۴ ساعته بند دی',
+    'wallet.success_title': 'پیسې ولېږل شوې!',
   },
   ur: {
     'app.name': 'کافل',
@@ -91,6 +113,17 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'safety.reason_other': 'کچھ اور',
     'safety.submitted': 'شکریہ',
     'safety.submitted_body': 'ہمیں آپ کی رپورٹ مل گئی۔ ہماری ٹیم اسے دیکھے گی۔',
+    'wallet.title': 'میرا والیٹ',
+    'wallet.balance': 'موجودہ بیلنس',
+    'wallet.withdraw': 'رقم نکالیں',
+    'wallet.amount': 'رقم (روپے)',
+    'wallet.withdraw_all': 'سب نکالیں',
+    'wallet.recent': 'حالیہ نکالیاں',
+    'wallet.none': 'ابھی تک کوئی نکالی نہیں',
+    'wallet.sent': 'بھیج دیا گیا',
+    'wallet.kyc_required': 'رقم نکالنے کے لیے شناختی کارد کی تصدیق ضروری ہے',
+    'wallet.cooldown': 'نئے آلے کی وجہ سے رقم کی منتقلی 24 گھنٹے بند ہے',
+    'wallet.success_title': 'رقم بھیج دی گئی!',
   },
   en: {
     'app.name': 'KAFIL',
@@ -120,6 +153,17 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'safety.reason_other': 'Something else',
     'safety.submitted': 'Thank you',
     'safety.submitted_body': "We received your report. Our team will review it.",
+    'wallet.title': 'My wallet',
+    'wallet.balance': 'Available balance',
+    'wallet.withdraw': 'Withdraw',
+    'wallet.amount': 'Amount (PKR)',
+    'wallet.withdraw_all': 'Withdraw all',
+    'wallet.recent': 'Recent withdrawals',
+    'wallet.none': 'No withdrawals yet',
+    'wallet.sent': 'Sent',
+    'wallet.kyc_required': 'Cash-out requires CNIC verification',
+    'wallet.cooldown': 'Money actions are paused for 24h after a device change',
+    'wallet.success_title': 'Money sent!',
   },
 };
 

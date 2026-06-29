@@ -11,6 +11,7 @@ import { JobDetailScreen } from './JobDetailScreen';
 import { PostJobScreen } from './PostJobScreen';
 import { MyActivityScreen } from './MyActivityScreen';
 import { ChatListScreen } from './ChatListScreen';
+import { WalletScreen } from './WalletScreen';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -22,7 +23,7 @@ interface Job {
   status: string;
 }
 
-type Modal = 'detail' | 'post' | 'activity' | 'chats';
+type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet';
 
 export function HomeScreen() {
   const { api, signOut, inCooldown } = useAuth();
@@ -85,6 +86,10 @@ export function HomeScreen() {
     return <ChatListScreen onBack={() => setModal(null)} />;
   }
 
+  if (modal === 'wallet') {
+    return <WalletScreen onBack={() => setModal(null)} />;
+  }
+
   const isEmployer = roles.includes('employer');
 
   return (
@@ -104,8 +109,11 @@ export function HomeScreen() {
         <Pressable onPress={() => setModal('activity')} style={styles.actionBtn}>
           <Text style={styles.actionBtnText}>Activity</Text>
         </Pressable>
-        <Pressable onPress={() => setModal('chats')} style={styles.actionBtn}>
+        <Pressable onPress={() => setModal('chats')} style={styles.actionBtn} accessibilityLabel="Chats">
           <Text style={styles.actionBtnText}>Chats</Text>
+        </Pressable>
+        <Pressable onPress={() => setModal('wallet')} style={styles.actionBtn} accessibilityLabel={i18n.t('ps', 'wallet.title')}>
+          <Text style={styles.actionBtnText}>💰</Text>
         </Pressable>
         {isEmployer ? (
           <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]}>
