@@ -95,4 +95,29 @@ export const safetyRepository = {
   findUser(userId: string) {
     return prisma.user.findUnique({ where: { id: userId } });
   },
+
+  // ── reports ops queue (§18) ──────────────────────────────────────────────
+  /** All OPEN reports, newest first — the raw rows the queue groups by target. */
+  listOpenReports(limit = 500) {
+    return prisma.report.findMany({
+      where: { status: 'open' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  },
+
+  findReport(id: string) {
+    return prisma.report.findUnique({ where: { id } });
+  },
+
+  /** Mark every OPEN report against a target with a terminal status (bulk resolve). */
+  setReportsStatusForTarget(
+    tx: Prisma.TransactionClient,
+    args: { targetType: string; targetId: string; status: string },
+  ) {
+    return tx.report.updateMany({
+      where: { targetType: args.targetType, targetId: args.targetId, status: 'open' },
+      data: { status: args.status },
+    });
+  },
 };

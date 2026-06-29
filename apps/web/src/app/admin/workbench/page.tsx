@@ -44,21 +44,26 @@ export default function WorkbenchListPage() {
     <main style={{ padding: 24, maxWidth: 920, margin: '0 auto', fontFamily: 'system-ui' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <h1>Workbench</h1>
-        <button
-          type="button"
-          onClick={() => {
-            writeAdminToken(null);
-            router.replace('/admin/login');
-          }}
-          style={{
-            border: 0,
-            background: 'transparent',
-            color: '#1f7a4d',
-            cursor: 'pointer',
-          }}
-        >
-          Sign out
-        </button>
+        <nav style={{ display: 'flex', gap: 16 }}>
+          <Link href="/admin/reports" style={{ color: '#1f7a4d' }}>
+            Reports →
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              writeAdminToken(null);
+              router.replace('/admin/login');
+            }}
+            style={{
+              border: 0,
+              background: 'transparent',
+              color: '#1f7a4d',
+              cursor: 'pointer',
+            }}
+          >
+            Sign out
+          </button>
+        </nav>
       </header>
 
       <p className="muted">

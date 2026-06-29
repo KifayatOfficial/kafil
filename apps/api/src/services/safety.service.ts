@@ -260,6 +260,159 @@ export const safetyService = {
 
     return ok({ verb, newStatus });
   },
+
+  /**
+   * Ops reports queue (§18). Open reports grouped by the entity they target, so a
+   * moderator sees one row per reported thing — with how many distinct people flagged
+   * it, the worst (highest-weight) reason, the offender, and the offender's accumulated
+   * fraud weight. Sorted by report count desc, then most recent — worst actors float up.
+   */
+  async listReportsQueue(): Promise<
+    Result<
+      Array<{
+        targetType: string;
+        targetId: string;
+        offenderId: string | null;
+        offenderName: string | null;
+        offenderStatus: string | null;
+        offenderFraudWeight: number;
+        reportCount: number;
+        distinctReporters: number;
+        topReason: string;
+        latestAt: Date;
+      }>
+    >
+  > {
+    const reports = await safetyRepository.listOpenReports();
+
+    // Group by target.
+    const groups = new Map<
+      string,
+      {
+        targetType: string;
+        targetId: string;
+        reporters: Set<string>;
+        count: number;
+        topReason: string;
+        topWeight: number;
+        latestAt: Date;
+      }
+    >();
+    for (const r of reports) {
+      const key = `${r.targetType}:${r.targetId}`;
+      const w = REPORT_SIGNAL_WEIGHT[r.reason] ?? 10;
+      const g = groups.get(key);
+      if (!g) {
+        groups.set(key, {
+          targetType: r.targetType,
+          targetId: r.targetId,
+          reporters: new Set([r.reporterId]),
+          count: 1,
+          topReason: r.reason,
+          topWeight: w,
+          latestAt: r.createdAt,
+        });
+      } else {
+        g.count += 1;
+        g.reporters.add(r.reporterId);
+        if (w > g.topWeight) {
+          g.topWeight = w;
+          g.topReason = r.reason;
+        }
+        if (r.createdAt > g.latestAt) g.latestAt = r.createdAt;
+      }
+    }
+
+    // Enrich each group with offender identity + accumulated fraud weight.
+    const out = [];
+    for (const g of groups.values()) {
+      const offenderId = await resolveOffender(g.targetType, g.targetId);
+      let offenderName: string | null = null;
+      let offenderStatus: string | null = null;
+      let offenderFraudWeight = 0;
+      if (offenderId) {
+        const u = await safetyRepository.findUser(offenderId);
+        offenderName = u?.displayName ?? null;
+        offenderStatus = u?.status ?? null;
+        offenderFraudWeight = await safetyRepository.sumSignalWeight(offenderId);
+      }
+      out.push({
+        targetType: g.targetType,
+        targetId: g.targetId,
+        offenderId: offenderId ?? null,
+        offenderName,
+        offenderStatus,
+        offenderFraudWeight,
+        reportCount: g.count,
+        distinctReporters: g.reporters.size,
+        topReason: g.topReason,
+        latestAt: g.latestAt,
+      });
+    }
+
+    out.sort((a, b) => b.reportCount - a.reportCount || b.latestAt.getTime() - a.latestAt.getTime());
+    return ok(out);
+  },
+
+  /**
+   * Resolve every open report against a target. `decision`:
+   *   - 'dismiss'  → reports closed as dismissed; no action against the offender.
+   *   - 'action'   → reports closed as actioned; logs a moderation action. If the
+   *                  target is a user and `ban` is set, the offender is banned too
+   *                  (reusing the audited moderateUser path).
+   * Records a moderation_actions audit row + event regardless (P3).
+   */
+  async resolveReports(args: {
+    actorId: string;
+    targetType: string;
+    targetId: string;
+    decision: 'dismiss' | 'action';
+    note?: string;
+    ban?: boolean;
+  }): Promise<Result<{ closed: number; banned: boolean }>> {
+    const status = args.decision === 'dismiss' ? 'dismissed' : 'actioned';
+
+    const closed = await prisma.$transaction(async (tx) => {
+      const res = await safetyRepository.setReportsStatusForTarget(tx, {
+        targetType: args.targetType,
+        targetId: args.targetId,
+        status,
+      });
+      await safetyRepository.createModerationAction(tx, {
+        actorId: args.actorId,
+        targetType: args.targetType,
+        targetId: args.targetId,
+        action: `reports:${args.decision}`,
+        reason: args.note ?? null,
+      });
+      await emitEvent(tx, {
+        eventType: 'safety.reports_resolved',
+        actorId: args.actorId,
+        refType: args.targetType,
+        refId: args.targetId,
+        payload: { decision: args.decision, closed: res.count, note: args.note ?? null },
+      });
+      return res.count;
+    });
+
+    // Optional escalation: ban the offending USER through the audited path.
+    let banned = false;
+    if (args.decision === 'action' && args.ban && args.targetType === 'user') {
+      const r = await this.moderateUser({
+        actorId: args.actorId,
+        targetUserId: args.targetId,
+        input: {
+          verb: 'ban',
+          reason: (args.note ?? 'reported_abuse').slice(0, 40),
+          idempotency_key: `report-ban-${args.targetId}`,
+        },
+      });
+      if (!r.ok) return err(r.code, r.message);
+      banned = true;
+    }
+
+    return ok({ closed, banned });
+  },
 };
 
 /**

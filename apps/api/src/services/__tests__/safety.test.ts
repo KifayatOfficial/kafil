@@ -299,3 +299,102 @@ describe('moderation + ban gating (§9)', () => {
     if (!res.ok) expect(res.code).toBe('VALIDATION');
   });
 });
+
+describe('reports ops queue (§18)', () => {
+  async function moderator() {
+    const mod = await makeUser({ role: 'worker' });
+    await prisma.userRole.create({ data: { userId: mod.id, role: 'moderator' } });
+    return mod;
+  }
+
+  it('groups open reports by target with count, distinct reporters, top reason, offender + weight', async () => {
+    const employer = await makeUser({ role: 'employer' });
+    const jobId = await postJob(employer.id);
+
+    // Two distinct reporters; the higher-weight reason (fee_request=80) should win over scam=70.
+    const r1 = await makeUser({ role: 'worker' });
+    const r2 = await makeUser({ role: 'worker' });
+    await safetyService.reportEntity({
+      reporterId: r1.id,
+      input: { target_type: 'job', target_id: jobId, reason: 'scam', idempotency_key: newKey() },
+    });
+    await safetyService.reportEntity({
+      reporterId: r2.id,
+      input: { target_type: 'job', target_id: jobId, reason: 'fee_request', idempotency_key: newKey() },
+    });
+
+    const q = await safetyService.listReportsQueue();
+    expect(q.ok).toBe(true);
+    if (q.ok) {
+      const row = q.value.find((x) => x.targetId === jobId);
+      expect(row).toBeDefined();
+      expect(row!.reportCount).toBe(2);
+      expect(row!.distinctReporters).toBe(2);
+      expect(row!.topReason).toBe('fee_request'); // highest weight wins
+      expect(row!.offenderId).toBe(employer.id); // job → employer
+      // Two report signals on the employer: scam(70) + fee_request(80) = 150.
+      expect(row!.offenderFraudWeight).toBe(150);
+    }
+  });
+
+  it('resolve(dismiss) closes the open reports and writes an audit row, no ban', async () => {
+    const employer = await makeUser({ role: 'employer' });
+    const jobId = await postJob(employer.id);
+    const reporter = await makeUser({ role: 'worker' });
+    await safetyService.reportEntity({
+      reporterId: reporter.id,
+      input: { target_type: 'job', target_id: jobId, reason: 'spam', idempotency_key: newKey() },
+    });
+    const mod = await moderator();
+
+    const res = await safetyService.resolveReports({
+      actorId: mod.id,
+      targetType: 'job',
+      targetId: jobId,
+      decision: 'dismiss',
+      note: 'looks legit',
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.closed).toBe(1);
+      expect(res.value.banned).toBe(false);
+    }
+
+    // No longer in the open queue.
+    const q = await safetyService.listReportsQueue();
+    if (q.ok) expect(q.value.find((x) => x.targetId === jobId)).toBeUndefined();
+
+    const report = await prisma.report.findFirstOrThrow({ where: { targetId: jobId } });
+    expect(report.status).toBe('dismissed');
+    const action = await prisma.moderationAction.findFirstOrThrow({
+      where: { targetId: jobId, action: 'reports:dismiss' },
+    });
+    expect(action.actorId).toBe(mod.id);
+  });
+
+  it('resolve(action, ban) on a reported USER bans the offender through the audited path', async () => {
+    const offender = await makeUser({ role: 'worker' });
+    const reporter = await makeUser({ role: 'worker' });
+    await safetyService.reportEntity({
+      reporterId: reporter.id,
+      input: { target_type: 'user', target_id: offender.id, reason: 'harassment', idempotency_key: newKey() },
+    });
+    const mod = await moderator();
+
+    const res = await safetyService.resolveReports({
+      actorId: mod.id,
+      targetType: 'user',
+      targetId: offender.id,
+      decision: 'action',
+      note: 'harassment confirmed',
+      ban: true,
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.value.banned).toBe(true);
+
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: offender.id } });
+    expect(after.status).toBe('banned');
+    const report = await prisma.report.findFirstOrThrow({ where: { targetId: offender.id } });
+    expect(report.status).toBe('actioned');
+  });
+});
