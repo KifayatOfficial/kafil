@@ -8,7 +8,11 @@ import { getActorOrDevStub } from '../../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  // Require auth: reviews are profile-shaping data, not anonymously enumerable by id.
+  const actor = getActorOrDevStub(req);
+  if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+
   const { id } = await ctx.params;
   const res = await reviewService.listForAssignment(id);
   if (!res.ok) return NextResponse.json(res, { status: statusFor(res.code) });

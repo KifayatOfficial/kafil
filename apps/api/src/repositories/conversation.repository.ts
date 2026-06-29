@@ -45,7 +45,13 @@ export const conversationRepository = {
       orderBy: { createdAt: 'desc' },
       include: {
         participants: { include: { user: { select: { id: true, displayName: true } } } },
-        messages: { take: 1, orderBy: { createdAt: 'desc' } },
+        // §5/§24/B1 — the last-message preview must NEVER carry the raw body. Select
+        // bodyRedacted explicitly; omitting `select` would ship the unredacted `body`.
+        messages: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, senderId: true, bodyRedacted: true, flagged: true, createdAt: true },
+        },
       },
       take: 50,
     });

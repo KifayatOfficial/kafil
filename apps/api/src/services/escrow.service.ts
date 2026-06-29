@@ -11,6 +11,7 @@
 //     attributable in the ledger entries. Once partial settlements arrive at scale
 //     we may add per-assignment sub-balances, but the entries already support that.
 
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
@@ -27,6 +28,36 @@ const DEFAULTS = {
   commissionMinMinor: 5_000n, // 50 PKR
   commissionCapMinor: 2_000_000n, // 20,000 PKR
 };
+
+// The escrow-debit leg reasons that each represent a TERMINAL settlement of an
+// assignment's escrow. Any one of these existing means the assignment is already
+// settled — so release / refund / partial must ALL check the full set, not just
+// their own reason. (Pre-fix, release checked only 'escrow_release', so a release
+// after a refund — or a concurrent double-release — could slip through.)
+const SETTLEMENT_REASONS = ['escrow_release', 'refund', 'partial_payout'] as const;
+
+// Thrown inside a txn when a concurrent/duplicate settlement is detected after the
+// row lock. Caught by the caller and surfaced as a CONFLICT (never a 500).
+class AlreadySettledError extends Error {}
+
+/**
+ * Lock the assignment row FOR UPDATE and assert no settlement entry exists yet.
+ * Run INSIDE the money transaction: the lock serializes concurrent settlements of
+ * the same assignment, so the "has it been settled?" check can't race (the prior
+ * TOCTOU let two concurrent releases both pass an out-of-txn check and double-pay).
+ */
+async function assertUnsettledLocked(tx: Prisma.TransactionClient, assignmentId: string) {
+  // Row lock — serializes any other settlement txn on this assignment.
+  await tx.$queryRaw`SELECT id FROM assignments WHERE id = ${assignmentId}::uuid FOR UPDATE`;
+  const prior = await tx.ledgerEntry.findFirst({
+    where: {
+      reason: { in: SETTLEMENT_REASONS as unknown as string[] },
+      refType: 'assignment',
+      refId: assignmentId,
+    },
+  });
+  if (prior) throw new AlreadySettledError();
+}
 
 async function loadInt(key: string): Promise<number | null> {
   const s = await prisma.setting.findUnique({ where: { key } });
@@ -128,14 +159,6 @@ export const escrowService = {
     if (!a) return err('NOT_FOUND', 'assignment not found');
     if (a.job.paymentMode !== 'escrow') return err('CONFLICT', 'job is not escrow-mode');
 
-    // Idempotency check: has this assignment already been released?
-    const prior = await prisma.ledgerEntry.findFirst({
-      where: { reason: 'escrow_release', refType: 'assignment', refId: a.id },
-    });
-    if (prior) {
-      return err('CONFLICT', 'escrow already released for this assignment');
-    }
-
     // Gross for one assignment = rate × duration (one slot's worth).
     const job = await prisma.job.findUniqueOrThrow({
       where: { id: a.jobId },
@@ -145,32 +168,41 @@ export const escrowService = {
     const commission = await computeCommission(gross);
     const net = gross - commission;
 
-    await prisma.$transaction(async (tx) => {
-      await releaseEscrowLedger(tx, {
-        workerId: a.workerId,
-        grossMinor: gross,
-        commissionMinor: commission,
-        refType: 'assignment',
-        refId: a.id,
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Lock + settle-once check INSIDE the txn so concurrent releases serialize.
+        await assertUnsettledLocked(tx, a.id);
+        await releaseEscrowLedger(tx, {
+          workerId: a.workerId,
+          grossMinor: gross,
+          commissionMinor: commission,
+          refType: 'assignment',
+          refId: a.id,
+        });
+        // Stamp finalizedAt on the assignment but DON'T overwrite status — the caller
+        // (workbench or scheduler) drives state machine transitions.
+        await tx.assignment.update({
+          where: { id: a.id },
+          data: { finalizedAt: new Date(), version: { increment: 1 } },
+        });
+        await emitEvent(tx, {
+          eventType: 'escrow.released',
+          actorId: null,
+          refType: 'assignment',
+          refId: a.id,
+          payload: {
+            gross_minor: gross.toString(),
+            commission_minor: commission.toString(),
+            net_minor: net.toString(),
+          },
+        });
       });
-      // Stamp finalizedAt on the assignment but DON'T overwrite status — the caller
-      // (workbench or scheduler) drives state machine transitions.
-      await tx.assignment.update({
-        where: { id: a.id },
-        data: { finalizedAt: new Date(), version: { increment: 1 } },
-      });
-      await emitEvent(tx, {
-        eventType: 'escrow.released',
-        actorId: null,
-        refType: 'assignment',
-        refId: a.id,
-        payload: {
-          gross_minor: gross.toString(),
-          commission_minor: commission.toString(),
-          net_minor: net.toString(),
-        },
-      });
-    });
+    } catch (e) {
+      if (e instanceof AlreadySettledError) {
+        return err('CONFLICT', 'escrow already settled for this assignment');
+      }
+      throw e;
+    }
 
     return ok({ workerNetMinor: net.toString(), commissionMinor: commission.toString() });
   },
@@ -186,28 +218,31 @@ export const escrowService = {
     if (!a) return err('NOT_FOUND', 'assignment not found');
     if (a.job.paymentMode !== 'escrow') return err('CONFLICT', 'job is not escrow-mode');
 
-    const prior = await prisma.ledgerEntry.findFirst({
-      where: { reason: { in: ['escrow_release', 'refund', 'partial_payout'] }, refType: 'assignment', refId: a.id },
-    });
-    if (prior) return err('CONFLICT', 'escrow already settled for this assignment');
-
     const gross = BigInt(a.agreedRatePkr || a.job.ratePkr) * 100n * BigInt(a.job.durationDays ?? 1);
 
-    await prisma.$transaction(async (tx) => {
-      await refundEscrowLedger(tx, {
-        employerId: a.job.employerId,
-        amountMinor: gross,
-        refType: 'assignment',
-        refId: a.id,
+    try {
+      await prisma.$transaction(async (tx) => {
+        await assertUnsettledLocked(tx, a.id);
+        await refundEscrowLedger(tx, {
+          employerId: a.job.employerId,
+          amountMinor: gross,
+          refType: 'assignment',
+          refId: a.id,
+        });
+        await emitEvent(tx, {
+          eventType: 'escrow.refunded',
+          actorId: null,
+          refType: 'assignment',
+          refId: a.id,
+          payload: { refunded_minor: gross.toString() },
+        });
       });
-      await emitEvent(tx, {
-        eventType: 'escrow.refunded',
-        actorId: null,
-        refType: 'assignment',
-        refId: a.id,
-        payload: { refunded_minor: gross.toString() },
-      });
-    });
+    } catch (e) {
+      if (e instanceof AlreadySettledError) {
+        return err('CONFLICT', 'escrow already settled for this assignment');
+      }
+      throw e;
+    }
     return ok({ refundedMinor: gross.toString() });
   },
 
@@ -227,32 +262,44 @@ export const escrowService = {
     if (args.payoutMinor < 0n || args.payoutMinor > gross) {
       return err('VALIDATION', 'payout must be between 0 and gross');
     }
-    const commission = (args.payoutMinor * 5n) / 100n; // simple: commission only on what worker actually receives
+    // Commission is computed with the SAME min/cap policy as a full release — a worker
+    // shouldn't be charged a different rate just because ops chose "partial" over
+    // "pay_worker". Commission is bounded never to exceed the payout (computeCommission
+    // caps at its argument), so refund stays ≥ 0.
+    const commission = await computeCommission(args.payoutMinor);
     const refund = gross - args.payoutMinor - commission;
     if (refund < 0n) return err('VALIDATION', 'commission exceeds gross-payout');
 
-    await prisma.$transaction(async (tx) => {
-      await partialSettleLedger(tx, {
-        workerId: a.workerId,
-        employerId: a.job.employerId,
-        grossMinor: gross,
-        payoutMinor: args.payoutMinor,
-        refundMinor: refund,
-        commissionMinor: commission,
-        refType: 'assignment',
-        refId: a.id,
+    try {
+      await prisma.$transaction(async (tx) => {
+        await assertUnsettledLocked(tx, a.id);
+        await partialSettleLedger(tx, {
+          workerId: a.workerId,
+          employerId: a.job.employerId,
+          grossMinor: gross,
+          payoutMinor: args.payoutMinor,
+          refundMinor: refund,
+          commissionMinor: commission,
+          refType: 'assignment',
+          refId: a.id,
+        });
+        await emitEvent(tx, {
+          eventType: 'escrow.partial_settled',
+          refType: 'assignment',
+          refId: a.id,
+          payload: {
+            payout_minor: args.payoutMinor.toString(),
+            refund_minor: refund.toString(),
+            commission_minor: commission.toString(),
+          },
+        });
       });
-      await emitEvent(tx, {
-        eventType: 'escrow.partial_settled',
-        refType: 'assignment',
-        refId: a.id,
-        payload: {
-          payout_minor: args.payoutMinor.toString(),
-          refund_minor: refund.toString(),
-          commission_minor: commission.toString(),
-        },
-      });
-    });
+    } catch (e) {
+      if (e instanceof AlreadySettledError) {
+        return err('CONFLICT', 'escrow already settled for this assignment');
+      }
+      throw e;
+    }
     return ok({
       payoutMinor: args.payoutMinor.toString(),
       refundMinor: refund.toString(),

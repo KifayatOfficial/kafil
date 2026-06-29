@@ -41,8 +41,14 @@ export const assignmentService = {
     // an assignment with a payout obligation unless the money is already in our books.
     const job = await prisma.job.findUniqueOrThrow({
       where: { id: application.jobId },
-      select: { id: true, paymentMode: true, ratePkr: true, durationDays: true, headcount: true },
+      select: { id: true, employerId: true, paymentMode: true, ratePkr: true, durationDays: true, headcount: true },
     });
+    // Authorization (IDOR guard): only the employer who OWNS the job may accept an
+    // application against it. Without this, any authenticated user could accept a
+    // worker onto someone else's job, open the chat, and drive it to escrow release.
+    if (job.employerId !== args.employerId) {
+      return err('FORBIDDEN', 'not your job');
+    }
     if (job.paymentMode === 'escrow') {
       const target =
         BigInt(job.ratePkr) * 100n * BigInt(job.durationDays ?? 1) * BigInt(job.headcount);
@@ -134,9 +140,16 @@ export const assignmentService = {
     const next = nextStatus(current.status as AssignmentStatus, args.name);
     if (!next) return err('CONFLICT', 'no next state');
 
-    const finalStatus = await prisma.$transaction(async (tx) => {
-      const updated = await tx.assignment.update({
-        where: { id: args.assignmentId },
+    let finalStatus: AssignmentStatus;
+    try {
+      finalStatus = await prisma.$transaction(async (tx) => {
+      // §14 optimistic lock: only transition if the row is still at the version we
+      // validated against. Two concurrent transitions on the same assignment would
+      // otherwise both pass canTransition() on the same starting state and clobber
+      // each other (e.g. confirm + expire both "winning"). updateMany returns the
+      // affected count; 0 means someone moved the row first → caller retries.
+      const lock = await tx.assignment.updateMany({
+        where: { id: args.assignmentId, version: current.version },
         data: {
           status: next,
           version: { increment: 1 },
@@ -147,6 +160,8 @@ export const assignmentService = {
           ...(args.name === 'finalize' ? { finalizedAt: new Date() } : {}),
         },
       });
+      if (lock.count === 0) throw new VersionConflictError();
+      const updated = await tx.assignment.findUniqueOrThrow({ where: { id: args.assignmentId } });
       await emitEvent(tx, {
         eventType: `assignment.${args.name}`,
         actorId: args.actorId,
@@ -194,13 +209,20 @@ export const assignmentService = {
         return 'completed' satisfies AssignmentStatus;
       }
       return next;
-    });
+      });
+    } catch (e) {
+      if (e instanceof VersionConflictError) {
+        return err('CONFLICT', 'assignment changed concurrently — refetch and retry');
+      }
+      throw e;
+    }
 
     return ok({ status: finalStatus });
   },
 };
 
 class SlotConflictError extends Error {}
+class VersionConflictError extends Error {}
 
 async function snapshotKyc(tx: any, workerId: string, employerId: string) {
   const [w, e] = await Promise.all([
