@@ -1,7 +1,5 @@
-// Authenticated home — placeholder job feed. Real feed wires next (apply flow, filtering,
-// search). For now we fetch /api/jobs and show the same cards the unauth shell did.
-
-import { useEffect, useState } from 'react';
+// Authenticated home — job feed. Tapping a card opens JobDetailScreen.
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
@@ -9,6 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { JobDetailScreen } from './JobDetailScreen';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -24,14 +23,31 @@ export function HomeScreen() {
   const { api, signOut, inCooldown } = useAuth();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const load = useCallback(async () => {
+    const r = await api.get<{ ok: true; jobs: Job[] }>('/api/jobs');
+    if (r.success) setJobs((r.data as { jobs: Job[] }).jobs);
+    else setError('Failed to load');
+  }, [api]);
 
   useEffect(() => {
-    (async () => {
-      const r = await api.get<{ ok: true; jobs: Job[] }>('/api/jobs');
-      if (r.success) setJobs((r.data as { jobs: Job[] }).jobs);
-      else setError('Failed to load');
-    })().catch((e: unknown) => setError(e instanceof Error ? e.message : 'failed'));
-  }, [api]);
+    load().catch((e: unknown) => setError(e instanceof Error ? e.message : 'failed'));
+  }, [load, reloadKey]);
+
+  if (openJobId) {
+    return (
+      <JobDetailScreen
+        jobId={openJobId}
+        onClose={() => setOpenJobId(null)}
+        onApplied={() => {
+          setOpenJobId(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -64,18 +80,21 @@ export function HomeScreen() {
         ) : jobs.length === 0 ? (
           <Text style={styles.muted}>{i18n.t('ps', 'empty.no_jobs')}</Text>
         ) : (
-          jobs.map((j) => <JobCard key={j.id} job={j} />)
+          jobs.map((j) => (
+            <JobCard key={j.id} job={j} onPress={() => setOpenJobId(j.id)} />
+          ))
         )}
       </ScrollView>
     </View>
   );
 }
 
-function JobCard({ job }: { job: Job }) {
+function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
   const { scale, onPressIn, onPressOut } = usePressScale();
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Pressable
+      onPress={onPress}
       onPressIn={() => {
         onPressIn();
         void haptic(motion.hapticToken.TAP_LIGHT);

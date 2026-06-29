@@ -20,4 +20,49 @@ export const applicationRepository = {
       data: { status, decidedAt: new Date() },
     });
   },
+  /** §3 — worker's own applications, with the job embedded for the UI list. */
+  listForWorker(workerId: string, limit = 50) {
+    return prisma.application.findMany({
+      where: { workerId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        job: {
+          select: {
+            id: true,
+            title: true,
+            ratePkr: true,
+            rateUnit: true,
+            status: true,
+            employerId: true,
+          },
+        },
+      },
+    });
+  },
+  /** Employer's view: who applied to a specific job (their own). */
+  listForJob(jobId: string, limit = 100) {
+    return prisma.application.findMany({
+      where: { jobId },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      include: {
+        worker: {
+          select: {
+            id: true,
+            displayName: true,
+            photoUrl: true,
+            kycLevel: true,
+            workerProfile: {
+              select: {
+                ratingBayesian: true,
+                jobsCompleted: true,
+                bio: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  },
 };
