@@ -134,6 +134,34 @@ describe('PSP webhook ingest (§6 / §26/M3)', () => {
     expect(await prisma.webhookEvent.count()).toBe(0);
   });
 
+  it('does NOT double-fund when the sync path already funded the same job (audit #2)', async () => {
+    const { employer, jobId } = await escrowJob();
+    // Sync path funds the job first (legacy/impatient employer).
+    const sync = await escrowService.fundForJob({ jobId, employerId: employer.id });
+    expect(sync.ok).toBe(true);
+    const escrowAfterSync = await prisma.wallet.findFirstOrThrow({ where: { kind: 'escrow_holding' } });
+    expect(escrowAfterSync.balanceMinor).toBe(800_000n);
+
+    // Then the async PSP confirmation lands for the same job's funding Payment.
+    const init = await escrowService.initiateFunding({ jobId, employerId: employer.id });
+    if (!init.ok) throw new Error();
+    const { rawBody, signature } = signed({
+      provider: 'jazzcash',
+      provider_ref: 'txn-both',
+      event_type: 'payment.succeeded',
+      payment_id: init.value.paymentId,
+      amount_minor: init.value.amountMinor,
+    });
+    const res = await webhookService.ingest({ rawBody, signature });
+    expect(res.ok).toBe(true);
+
+    // Escrow is still 800k, NOT 1.6M — the async path added nothing on top of sync.
+    const escrowFinal = await prisma.wallet.findFirstOrThrow({ where: { kind: 'escrow_holding' } });
+    expect(escrowFinal.balanceMinor).toBe(800_000n);
+    expect((await prisma.payment.findFirstOrThrow({ where: { id: init.value.paymentId } })).status).toBe('succeeded');
+    expect(await reconcileWallets()).toEqual([]);
+  });
+
   it('payment.failed marks the payment failed and funds nothing', async () => {
     const { employer, jobId } = await escrowJob();
     const init = await escrowService.initiateFunding({ jobId, employerId: employer.id });

@@ -18,8 +18,10 @@ export interface JobCandidateRow {
   distance_m: number; // geodesic metres from the worker's base location
   open_slots: number;
   specialty_ids: string[];
-  // recent acceptances of THIS job's employer's jobs — proxy for over-exposure of the
-  // job side is not needed; over-exposure is computed per-worker in the worker feed.
+  // The employer's reputation (§7) — "is this a good employer to work for?". Bayesian
+  // rating 0..5 and payment reliability 0..1; null when the employer has no track record.
+  employer_rating: number | null;
+  employer_payment_reliability: number | null;
 }
 
 export const matchingRepository = {
@@ -33,6 +35,11 @@ export const matchingRepository = {
     radiusM: number;
     limit: number;
   }): Promise<JobCandidateRow[]> {
+    // Defensive clamp: these feed a parameterised $queryRaw (Prisma tagged templates
+    // bind, not interpolate), but we still bound them so a bad caller can't request an
+    // unbounded scan or a NaN.
+    const limit = Number.isFinite(args.limit) ? Math.min(500, Math.max(1, Math.trunc(args.limit))) : 30;
+    const radiusM = Number.isFinite(args.radiusM) ? Math.min(500_000, Math.max(1, args.radiusM)) : 25_000;
     const rows = await prisma.$queryRaw<
       Array<{
         id: string;
@@ -46,6 +53,8 @@ export const matchingRepository = {
         distance_m: number;
         open_slots: bigint;
         specialty_ids: string[] | null;
+        employer_rating: number | null;
+        employer_payment_reliability: number | null;
       }>
     >`
       SELECT
@@ -62,17 +71,20 @@ export const matchingRepository = {
           ST_SetSRID(ST_MakePoint(${args.lng}::double precision, ${args.lat}::double precision), 4326)::geography
         ) AS distance_m,
         (SELECT COUNT(*) FROM job_slots s WHERE s.job_id = j.id AND s.status = 'open') AS open_slots,
-        ARRAY(SELECT js.specialty_id::text FROM job_specialties js WHERE js.job_id = j.id) AS specialty_ids
+        ARRAY(SELECT js.specialty_id::text FROM job_specialties js WHERE js.job_id = j.id) AS specialty_ids,
+        ep.rating_bayesian AS employer_rating,
+        ep.payment_reliability AS employer_payment_reliability
       FROM jobs j
       JOIN locations loc ON loc.id = j.location_id
+      LEFT JOIN employer_profiles ep ON ep.user_id = j.employer_id
       WHERE j.status = 'open'
         AND ST_DWithin(
           loc.geog,
           ST_SetSRID(ST_MakePoint(${args.lng}::double precision, ${args.lat}::double precision), 4326)::geography,
-          ${args.radiusM}::double precision
+          ${radiusM}::double precision
         )
       ORDER BY distance_m ASC
-      LIMIT ${args.limit}
+      LIMIT ${limit}
     `;
 
     return rows.map((r) => ({
@@ -87,6 +99,9 @@ export const matchingRepository = {
       distance_m: Number(r.distance_m),
       open_slots: Number(r.open_slots),
       specialty_ids: r.specialty_ids ?? [],
+      employer_rating: r.employer_rating != null ? Number(r.employer_rating) : null,
+      employer_payment_reliability:
+        r.employer_payment_reliability != null ? Number(r.employer_payment_reliability) : null,
     }));
   },
 

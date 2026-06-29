@@ -47,6 +47,11 @@ export const webhookService = {
     } catch {
       parsedPayload = {};
     }
+    // Dedupe claim. We try to insert the WebhookEvent row FIRST (P2002 = already seen),
+    // but we only treat a prior row as a true dedupe if it was actually PROCESSED. A row
+    // left unprocessed by a previous crashed/failed attempt is re-driven here — this is
+    // what prevents the "stuck funds" bug where the claim commits but the dispatch then
+    // throws, leaving escrow unfunded while the PSP got a 200.
     try {
       await prisma.webhookEvent.create({
         data: {
@@ -59,25 +64,57 @@ export const webhookService = {
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        return ok({ processed: false, deduped: true, eventType: ev.eventType });
+        const prior = await prisma.webhookEvent.findUnique({
+          where: {
+            provider_providerRef_eventType: {
+              provider: ev.provider,
+              providerRef: ev.providerRef,
+              eventType: ev.eventType,
+            },
+          },
+          select: { processedAt: true },
+        });
+        // Already fully processed → genuine dedupe. Otherwise fall through and re-drive.
+        if (prior?.processedAt) {
+          return ok({ processed: false, deduped: true, eventType: ev.eventType });
+        }
+      } else {
+        throw e;
       }
-      throw e;
     }
 
-    // Dispatch. Downstream effects are independently idempotent (defense in depth).
+    // Dispatch. Downstream effects are independently idempotent (defense in depth), so
+    // re-driving an unprocessed event can't double-fund. Any throw is caught and
+    // surfaced as INTERNAL so the route returns 5xx and the PSP retries — and crucially
+    // we DON'T stamp processedAt, so the retry re-drives instead of being deduped away.
     let result = 'ignored';
-    if (ev.eventType === 'payment.succeeded' && ev.paymentId) {
-      const r = await escrowService.completeFundingForPayment({
-        paymentId: ev.paymentId,
-        confirmedAmountMinor: ev.amountMinor != null ? BigInt(ev.amountMinor) : undefined,
-      });
-      result = r.ok ? 'funded' : `error:${r.code}`;
-    } else if (ev.eventType === 'payment.failed' && ev.paymentId) {
-      const r = await escrowService.failFundingForPayment({ paymentId: ev.paymentId });
-      result = r.ok ? 'failed' : `error:${r.code}`;
+    let dispatchErr: string | null = null;
+    try {
+      if (ev.eventType === 'payment.succeeded' && ev.paymentId) {
+        const r = await escrowService.completeFundingForPayment({
+          paymentId: ev.paymentId,
+          confirmedAmountMinor: ev.amountMinor != null ? BigInt(ev.amountMinor) : undefined,
+        });
+        result = r.ok ? 'funded' : `error:${r.code}`;
+        if (!r.ok) dispatchErr = `${r.code}:${r.message}`;
+      } else if (ev.eventType === 'payment.failed' && ev.paymentId) {
+        const r = await escrowService.failFundingForPayment({ paymentId: ev.paymentId });
+        result = r.ok ? 'failed' : `error:${r.code}`;
+        if (!r.ok) dispatchErr = `${r.code}:${r.message}`;
+      }
+    } catch (e) {
+      // Leave processedAt NULL so the PSP retry re-drives this exact event.
+      // eslint-disable-next-line no-console
+      console.error('[webhook] dispatch threw:', e instanceof Error ? e.message : String(e));
+      return err('INTERNAL', 'webhook dispatch failed; will retry');
+    }
+    // A NOT_FOUND/transient dispatch error also stays un-stamped so the PSP retries
+    // (the Payment row may not be visible yet under read-after-write lag).
+    if (dispatchErr && result.startsWith('error:NOT_FOUND')) {
+      return err('INTERNAL', `dispatch not ready: ${dispatchErr}`);
     }
 
-    // Record the outcome on the WebhookEvent row.
+    // Mark processed only after a successful (or terminally-handled) dispatch.
     await prisma.webhookEvent.updateMany({
       where: { provider: ev.provider, providerRef: ev.providerRef, eventType: ev.eventType },
       data: { processedAt: new Date(), result },

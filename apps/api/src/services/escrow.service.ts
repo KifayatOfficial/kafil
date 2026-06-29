@@ -235,7 +235,20 @@ export const escrowService = {
           return err('CONFLICT', 'confirmed amount does not match expected');
         }
 
-        await fundEscrowLedger(tx, { amountMinor: amount, refType: 'job', refId: payment.refId });
+        // Guard against DOUBLE-FUNDING across the sync (fundForJob) and async (this)
+        // paths: both write reason='escrow_fund' on refType='job'. If the job's escrow
+        // is already covered for this Payment's amount, mark the Payment succeeded but
+        // DON'T add a second ledger credit (which would inflate escrow → insolvency).
+        const alreadyFunded = ((await tx.ledgerEntry.aggregate({
+          where: { reason: 'escrow_fund', refType: 'job', refId: payment.refId, amountMinor: { gt: 0 } },
+          _sum: { amountMinor: true },
+        }))._sum.amountMinor ?? 0n) as bigint;
+
+        let credited = 0n;
+        if (alreadyFunded < amount) {
+          credited = amount - alreadyFunded;
+          await fundEscrowLedger(tx, { amountMinor: credited, refType: 'job', refId: payment.refId });
+        }
         await tx.payment.update({
           where: { id: payment.id },
           data: { status: 'succeeded', provider: payment.provider },
@@ -245,9 +258,9 @@ export const escrowService = {
           actorId: payment.userId,
           refType: 'job',
           refId: payment.refId,
-          payload: { amount_minor: amount.toString(), via: 'webhook', payment_id: payment.id },
+          payload: { amount_minor: credited.toString(), via: 'webhook', payment_id: payment.id, total_target: amount.toString() },
         });
-        return ok({ fundedMinor: amount.toString(), alreadyDone: false });
+        return ok({ fundedMinor: amount.toString(), alreadyDone: credited === 0n });
       })
       .catch((e) => {
         throw e;

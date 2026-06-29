@@ -19,9 +19,11 @@ export async function POST(req: Request) {
 
   const res = await webhookService.ingest({ rawBody, signature });
   if (!res.ok) {
-    // 401 for signature failures (PSP should not retry a forged/misconfigured call),
-    // 400 for malformed. Map via the service's code.
-    const status = res.code === 'UNAUTHORIZED' ? 401 : 400;
+    // 401 → forged/misconfigured signature (PSP should NOT retry).
+    // 5xx → dispatch failed/not-ready: return 503 so the PSP DOES retry and we re-drive.
+    // 400 → malformed.
+    const status =
+      res.code === 'UNAUTHORIZED' ? 401 : res.code === 'INTERNAL' ? 503 : 400;
     return NextResponse.json({ ok: false, code: res.code, message: res.message }, { status });
   }
   // Always 200 on a verified event (including dedupe) so the gateway stops retrying.

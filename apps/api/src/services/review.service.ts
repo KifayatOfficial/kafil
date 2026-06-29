@@ -15,6 +15,7 @@ import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { reviewRepository } from '../repositories/review.repository';
+import { reputationService } from './reputation.service';
 
 const REVIEWABLE_STATUSES = new Set([
   'completed',
@@ -60,7 +61,7 @@ export const reviewService = {
     // friendly error). subjectId is always derived; we never trust client input for it.
     if (subjectId === args.actorId) return err('FORBIDDEN', 'no self-review');
 
-    return prisma
+    const result = await prisma
       .$transaction(async (tx) => {
         // §7 — one review per (assignment, author).
         const existing = await tx.review.findUnique({
@@ -68,7 +69,7 @@ export const reviewService = {
         });
         if (existing) {
           // Idempotent: report the existing row's id back without creating a duplicate.
-          return ok({ reviewId: existing.id, visible: existing.visibleAt !== null });
+          return ok({ reviewId: existing.id, visible: existing.visibleAt !== null, revealed: false });
         }
 
         const review = await reviewRepository.create(tx, {
@@ -102,10 +103,10 @@ export const reviewService = {
             refId: a.id,
             payload: {},
           });
-          return ok({ reviewId: review.id, visible: true });
+          return ok({ reviewId: review.id, visible: true, revealed: true });
         }
 
-        return ok({ reviewId: review.id, visible: false });
+        return ok({ reviewId: review.id, visible: false, revealed: false });
       })
       .catch((e: unknown) => {
         // Unique-constraint surfaced through Prisma — concurrent double-submit.
@@ -115,6 +116,22 @@ export const reviewService = {
         }
         throw e;
       });
+
+    // §7 — both reviews just became visible → recompute reputation for BOTH parties
+    // (worker + employer). Post-commit + non-fatal: a recompute hiccup must not fail the
+    // review submission, and the nightly backfill would catch any miss anyway.
+    if (result.ok && result.value.revealed) {
+      try {
+        await reputationService.recomputeForUser(a.workerId);
+        await reputationService.recomputeForUser(a.job.employerId);
+      } catch (e) {
+        // Non-fatal — reputation is denormalized + recomputable by the nightly backfill.
+        // eslint-disable-next-line no-console
+        console.error('[review] reputation recompute failed:', e instanceof Error ? e.message : String(e));
+      }
+    }
+    if (!result.ok) return result;
+    return ok({ reviewId: result.value.reviewId, visible: result.value.visible });
   },
 
   /** Read endpoint helper: only shows visible reviews (caller-visible respect of §7). */

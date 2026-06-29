@@ -20,6 +20,7 @@ import { err, ok, type Result } from '../lib/result';
 import { applicationRepository } from '../repositories/application.repository';
 import { assignmentRepository } from '../repositories/assignment.repository';
 import { conversationRepository } from '../repositories/conversation.repository';
+import { reputationService } from './reputation.service';
 
 export const assignmentService = {
   /** Employer accepts an application → slot fill + create assignment, all atomic. */
@@ -269,6 +270,18 @@ export const assignmentService = {
         return err('CONFLICT', 'assignment changed concurrently — refetch and retry');
       }
       throw e;
+    }
+
+    // §7 — a completed engagement changes the worker's history (jobs_completed,
+    // completion_rate, trust_score). Recompute post-commit, non-fatal.
+    if (finalStatus === 'completed') {
+      try {
+        await reputationService.recomputeForUser(current.workerId);
+      } catch (e) {
+        // Never fail the transition on it — reputation is recomputable by the backfill.
+        // eslint-disable-next-line no-console
+        console.error('[assignment] reputation recompute failed:', e instanceof Error ? e.message : String(e));
+      }
     }
 
     return ok({ status: finalStatus });

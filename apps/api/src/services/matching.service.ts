@@ -23,8 +23,8 @@ import { matchingRepository, type JobCandidateRow } from '../repositories/matchi
 const DEFAULT_WEIGHTS = {
   specialty: 40,
   distance: 35,
-  reputation: 10,
-  freshness: 10,
+  reputation: 12, // employer reputation (§7) — "is this a good employer to work for?"
+  freshness: 8,
   exposurePenalty: 8, // subtracted, scaled by the worker's active load
 };
 
@@ -50,6 +50,7 @@ export interface RankedJob {
     distanceM: number;
     distanceScore: number;
     freshness: number;
+    employerReputation: number;
     exposurePenalty: number;
   };
 }
@@ -112,10 +113,18 @@ export const matchingService = {
         const specialtyMatch = specialtyMatchScore(c.specialty_ids, workerSpecs);
         const dDecay = distanceDecay(c.distance_m);
         const fresh = freshness(c.created_at, now);
+        // Employer reputation in [0,1]: no track record → neutral 0.5 (don't punish new
+        // employers, §7.6 newcomer bootstrap applies to both sides), else rating/5 blended
+        // with payment reliability.
+        const empRep =
+          c.employer_rating == null
+            ? 0.5
+            : 0.7 * (c.employer_rating / 5) + 0.3 * (c.employer_payment_reliability ?? 0.5);
 
         const score =
           weights.specialty * specialtyMatch +
           weights.distance * dDecay +
+          weights.reputation * empRep +
           weights.freshness * fresh -
           exposurePenalty;
 
@@ -135,6 +144,7 @@ export const matchingService = {
             distanceM: Math.round(c.distance_m),
             distanceScore: Math.round(dDecay * 1000) / 1000,
             freshness: Math.round(fresh * 1000) / 1000,
+            employerReputation: Math.round(empRep * 1000) / 1000,
             exposurePenalty: Math.round(exposurePenalty * 1000) / 1000,
           },
         };
