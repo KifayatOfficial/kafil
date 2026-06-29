@@ -46,6 +46,9 @@ export async function ensureMasonrySpecialty() {
 export async function cleanupTestData() {
   // Order matters: respect FKs.
   await prisma.event.deleteMany({}); // events are append-only; clearing keeps test runs predictable
+  await prisma.notificationDelivery.deleteMany({}); // FK on notifications
+  await prisma.notification.deleteMany({}); // FK on users
+  await prisma.notificationPref.deleteMany({}); // FK on users
   await prisma.fraudSignal.deleteMany({}); // FK on users
   await prisma.message.deleteMany({}); // FK on conversations + users
   await prisma.conversationParticipant.deleteMany({});
@@ -60,13 +63,20 @@ export async function cleanupTestData() {
   await prisma.jobSpecialty.deleteMany({});
   await prisma.job.deleteMany({});
   await prisma.idempotencyKey.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.accountHistory.deleteMany({});
-  await prisma.device.deleteMany({});
   await prisma.workerSpecialty.deleteMany({});
   await prisma.workerProfile.deleteMany({});
   await prisma.employerProfile.deleteMany({});
   await prisma.userRole.deleteMany({});
+  await prisma.session.deleteMany({});
+  await prisma.accountHistory.deleteMany({});
+  await prisma.recoveryContact.deleteMany({});
+  await prisma.userBlock.deleteMany({});
+  await prisma.moderationAction.deleteMany({});
+  await prisma.report.deleteMany({});
+  await prisma.device.deleteMany({});
+  // Settings touch scheduler tunables; reset between tests so a previous-test
+  // override (e.g. confirm_timeout_ms=0) doesn't leak into the next.
+  await prisma.setting.deleteMany({});
   // Keep seeded demo users + locations; delete anything created by tests (phones outside the 0000...10/20 demo range).
   await prisma.user.deleteMany({
     where: { phoneE164: { not: { in: ['+923000000010', '+923000000020'] } } },
