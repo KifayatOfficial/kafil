@@ -9,7 +9,7 @@ import { statusFor } from '../../../../../lib/result';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const actor = getActor(req);
+  const actor = await getActor(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   const { id } = await ctx.params;
   const res = await chatService.listMessages({ conversationId: id, userId: actor.userId });
@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const actor = getActor(req);
+  const actor = await getActor(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
   const key = req.headers.get('idempotency-key');

@@ -6,7 +6,7 @@ import { getActor } from '../../../../lib/auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const actor = getActor(req);
+  const actor = await getActor(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   const jobs = await listRepository.jobsForEmployer(actor.userId);
   return NextResponse.json({ ok: true, jobs });

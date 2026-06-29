@@ -8,13 +8,24 @@ import { NextResponse } from 'next/server';
 import { escrowService } from '../../../../../services/escrow.service';
 import { idempotent } from '../../../../../lib/idempotency';
 import { statusFor } from '../../../../../lib/result';
-import { getActorOrDevStub } from '../../../../../lib/auth';
+import { getActorOrDevStub, moneyScopeBlocked } from '../../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const actor = getActorOrDevStub(req);
+  const actor = await getActorOrDevStub(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+  // §24/A1 — a session in SIM-swap cooldown (scope.money=false) cannot move money.
+  if (moneyScopeBlocked(actor)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'FORBIDDEN',
+        message: 'Money actions are temporarily disabled after a device change. Try again later.',
+      },
+      { status: 403 },
+    );
+  }
   const key = req.headers.get('idempotency-key');
   if (!key) {
     return NextResponse.json(

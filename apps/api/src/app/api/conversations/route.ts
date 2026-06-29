@@ -7,7 +7,7 @@ import { statusFor } from '../../../lib/result';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const actor = getActor(req);
+  const actor = await getActor(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   const res = await chatService.listConversations(actor.userId);
   if (!res.ok) return NextResponse.json(res, { status: statusFor(res.code) });

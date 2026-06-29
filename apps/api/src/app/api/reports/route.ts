@@ -8,7 +8,7 @@ import { statusFor } from '../../../lib/result';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const actor = getActorOrDevStub(req);
+  const actor = await getActorOrDevStub(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
   const key = req.headers.get('idempotency-key');

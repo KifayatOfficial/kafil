@@ -46,6 +46,40 @@ describe('PII redactor — phones', () => {
   });
 });
 
+describe('PII redactor — bypass hardening (audit wave 2)', () => {
+  // Each of these defeated the pre-hardening detector; they must now be caught.
+  const bypasses = [
+    ['slash separators', '0300/123/4567'],
+    ['asterisk separators', '0300*123*4567'],
+    ['parentheses', '+92(300)1234567'],
+    ['double dots', '0300..123..4567'],
+    ['underscores', '0300_123_4567'],
+    ['"oh" for zero', 'reach me at oh three oh oh one two three four five six seven'],
+  ] as const;
+
+  for (const [label, input] of bypasses) {
+    it(`catches ${label}: "${input}"`, () => {
+      const r = redact(input);
+      expect(r.flagged).toBe(true);
+      expect(r.hits.some((h) => h.kind === 'phone')).toBe(true);
+      // The trailing digit run must not survive verbatim.
+      expect(r.redacted).not.toContain('4567');
+    });
+  }
+
+  it('catches native Pashto numeral words chained into a number', () => {
+    // صفر(0) درې(3) صفر(0) صفر(0) يو(1) دوه(2) درې(3) څلور(4) پنځه(5) شپږ(6) اووه(7)
+    const r = redact('زما نمبر صفر درې صفر صفر يو دوه درې څلور پنځه شپږ اووه دی');
+    expect(r.flagged).toBe(true);
+    expect(r.hits.some((h) => h.kind === 'phone')).toBe(true);
+  });
+
+  it('still does NOT over-redact prose containing a stray "oh"', () => {
+    const r = redact('oh, I can start on Monday and finish by Friday');
+    expect(r.flagged).toBe(false);
+  });
+});
+
 describe('PII redactor — urls / social / email', () => {
   it('catches https URL', () => {
     const r = redact('see https://example.com/portfolio');

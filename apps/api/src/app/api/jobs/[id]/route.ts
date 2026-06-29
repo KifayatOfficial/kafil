@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   // Require auth: job detail carries the exact location pin (§12) — never anonymous.
-  const actor = getActorOrDevStub(req);
+  const actor = await getActorOrDevStub(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
   const { id } = await ctx.params;

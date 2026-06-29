@@ -55,10 +55,21 @@ const WORDS_TO_DIGITS: Array<[RegExp, string]> = [
   [/\bseven\b/gi, '7'],
   [/\beight\b/gi, '8'],
   [/\bnine\b/gi, '9'],
+  // "oh" is spoken for zero ("oh-three-double-oh…"). Safe to map: it only forces a
+  // redaction if it lands inside a ≥7-digit run (the phone detector's min guard), so a
+  // stray "oh" in prose won't trigger a false hide.
+  [/\boh\b/gi, '0'],
   // Urdu/Pashto Roman transliterations occasionally used in chat. Conservative.
-  [/\bsifr\b/gi, '0'], [/\baik\b/gi, '1'], [/\bdo\b/gi, '2'], [/\bteen\b/gi, '3'],
-  [/\bchar\b/gi, '4'], [/\bpanch\b/gi, '5'], [/\bcheh\b/gi, '6'], [/\bsaat\b/gi, '7'],
-  [/\baath\b/gi, '8'], [/\bnau\b/gi, '9'],
+  [/\bsifr\b/gi, '0'], [/\baik\b/gi, '1'], [/\bek\b/gi, '1'], [/\bdo\b/gi, '2'], [/\bteen\b/gi, '3'],
+  [/\bchar\b/gi, '4'], [/\bpanch\b/gi, '5'], [/\bpaanch\b/gi, '5'], [/\bcheh\b/gi, '6'], [/\bche\b/gi, '6'],
+  [/\bsaat\b/gi, '7'], [/\baath\b/gi, '8'], [/\bnau\b/gi, '9'],
+  // Native Pashto/Urdu numeral WORDS (Arabic-script). Conservative set 0–9; like the
+  // others these only matter when they chain into a long digit run.
+  [/يو/g, '1'], [/دوه/g, '2'], [/درې/g, '3'], [/څلور/g, '4'], [/پنځه/g, '5'],
+  [/شپږ/g, '6'], [/اووه/g, '7'], [/اته/g, '8'], [/نهه/g, '9'], [/صفر/g, '0'],
+  // Urdu number words.
+  [/ایک/g, '1'], [/دو/g, '2'], [/تین/g, '3'], [/چار/g, '4'], [/پانچ/g, '5'],
+  [/چھ/g, '6'], [/سات/g, '7'], [/آٹھ/g, '8'], [/نو/g, '9'],
 ];
 
 function normalize(text: string): string {
@@ -72,15 +83,20 @@ function normalize(text: string): string {
 
 // 2) Detectors. Each runs against the NORMALIZED text and returns hits.
 
+// Separator class: whitespace, dot, dash, slash, asterisk, parentheses, underscore,
+// pipe, comma — any run of them (`*`) so "0300..123" / "0300//123" / "0300 - 123"
+// don't slip past. Kept as a single source of truth for all three detectors.
+const SEP = '[\\s\\.\\-\\/\\*\\(\\)_|,]*';
+
 const PHONE_DETECTORS: Array<{ re: RegExp; min: number }> = [
-  // +92 with or without separators, allowing intentional noise (spaces, dots, dashes).
+  // +92 with or without separators, allowing intentional noise.
   // Require enough digits to be a real PK mobile (10 after +92, sometimes 11 with leading 0).
-  { re: /\+?\s*9\s*2[\s\.\-]?[3]?[\s\.\-]?\d(?:[\s\.\-]?\d){8,10}/g, min: 10 },
+  { re: new RegExp(`\\+?${SEP}9${SEP}2${SEP}3?${SEP}\\d(?:${SEP}\\d){8,10}`, 'g'), min: 10 },
   // Local PK mobile: 03XXXXXXXXX with separators allowed.
-  { re: /0\s*3(?:[\s\.\-]?\d){8,9}/g, min: 9 },
+  { re: new RegExp(`0${SEP}3(?:${SEP}\\d){8,9}`, 'g'), min: 9 },
   // Generic "any run of ≥7 digits, possibly separated" — last-resort net.
   // We pull out hits and verify the digit count to avoid stomping on rates/dates.
-  { re: /(?:\d[\s\.\-]?){7,}/g, min: 7 },
+  { re: new RegExp(`(?:\\d${SEP}){7,}`, 'g'), min: 7 },
 ];
 
 const URL_DETECTOR = /\b(?:https?:\/\/|www\.)\S+/gi;

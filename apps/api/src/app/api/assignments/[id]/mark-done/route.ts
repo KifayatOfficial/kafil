@@ -12,7 +12,7 @@ import { getActorOrDevStub } from '../../../../../lib/auth';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const actor = getActorOrDevStub(req);
+  const actor = await getActorOrDevStub(req);
   if (!actor) {
     return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   }

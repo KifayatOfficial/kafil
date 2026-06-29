@@ -22,8 +22,8 @@ export type AdminAuthResult =
   | { kind: 'forbidden' };
 
 export async function requireAdmin(req: Request | NextRequest): Promise<AdminAuthResult> {
-  const actor = getActor(req);
-  if (!actor) return { kind: 'unauthorized' };
+  const actor = await getActor(req);
+  if (!actor || !actor.sessionId) return { kind: 'unauthorized' };
 
   const roles = await prisma.userRole.findMany({
     where: { userId: actor.userId },
