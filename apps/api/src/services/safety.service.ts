@@ -220,6 +220,16 @@ export const safetyService = {
     const newStatus =
       verb === 'ban' ? 'banned' : verb === 'suspend' ? 'suspended' : verb === 'lift' ? 'active' : target.status; // warn = unchanged
 
+    // Idempotency for the status-changing verbs: if the target is already in the state
+    // this verb would set, do nothing — no duplicate moderation_actions row, no second
+    // ban/suspend notification. This makes a retried resolveReports(ban) call (which
+    // passes a static idempotency_key but moderateUser didn't previously honour) safe,
+    // and guards any double-submit of the moderation endpoint. 'warn' is always allowed
+    // (it's an explicit, repeatable note with no status change).
+    if (verb !== 'warn' && target.status === newStatus) {
+      return ok({ verb, newStatus });
+    }
+
     const expiresAt = verb === 'suspend' && expires_at ? new Date(expires_at) : null;
 
     await prisma.$transaction(async (tx) => {

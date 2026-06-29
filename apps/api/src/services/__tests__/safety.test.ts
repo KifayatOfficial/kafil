@@ -298,6 +298,31 @@ describe('moderation + ban gating (§9)', () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.code).toBe('VALIDATION');
   });
+
+  it('re-banning an already-banned user is idempotent — no duplicate audit row or notification', async () => {
+    const mod = await moderator();
+    const target = await makeUser({ role: 'worker' });
+
+    const first = await safetyService.moderateUser({
+      actorId: mod.id,
+      targetUserId: target.id,
+      input: { verb: 'ban', reason: 'scam', idempotency_key: newKey() },
+    });
+    const second = await safetyService.moderateUser({
+      actorId: mod.id,
+      targetUserId: target.id,
+      input: { verb: 'ban', reason: 'scam', idempotency_key: newKey() },
+    });
+    expect(first.ok && second.ok).toBe(true);
+
+    // Exactly ONE ban moderation action + ONE ban notification, despite two calls.
+    const actions = await prisma.moderationAction.count({
+      where: { targetId: target.id, action: 'moderate:ban' },
+    });
+    expect(actions).toBe(1);
+    const notifs = await prisma.notification.count({ where: { userId: target.id, type: 'account.ban' } });
+    expect(notifs).toBe(1);
+  });
 });
 
 describe('reports ops queue (§18)', () => {

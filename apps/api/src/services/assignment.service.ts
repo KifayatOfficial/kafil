@@ -50,17 +50,71 @@ export const assignmentService = {
       return err('FORBIDDEN', 'not your job');
     }
     if (job.paymentMode === 'escrow') {
-      const target =
-        BigInt(job.ratePkr) * 100n * BigInt(job.durationDays ?? 1) * BigInt(job.headcount);
-      const funded = await prisma.ledgerEntry.aggregate({
+      // Solvency gate. A naive "is the job funded?" check that sums only escrow_fund
+      // entries is WRONG once any settlement has drained escrow: a slot that was
+      // released/refunded frees its partial-unique index and can be re-filled, and the
+      // stale gate would let a second settlement push escrow_holding negative
+      // (platform insolvency). Instead we require that the escrow CURRENTLY attributable
+      // to this job covers every live (unsettled) assignment PLUS this new one.
+      //
+      //   escrowForJob = funded(job) − drained(settlements on this job's assignments)
+      //   require escrowForJob ≥ (liveUnsettledAssignments + 1) × perAssignmentGross
+      //
+      // As a bonus this also blocks over-hiring past headcount (the N+1th accept needs
+      // (N+1)×gross but only N×gross was ever funded).
+      const perAssignmentGross = BigInt(job.ratePkr) * 100n * BigInt(job.durationDays ?? 1);
+
+      const fundedAgg = await prisma.ledgerEntry.aggregate({
         where: { reason: 'escrow_fund', refType: 'job', refId: job.id, amountMinor: { gt: 0 } },
         _sum: { amountMinor: true },
       });
-      const have = (funded._sum.amountMinor ?? 0n) as bigint;
-      if (have < target) {
+      const funded = (fundedAgg._sum.amountMinor ?? 0n) as bigint;
+
+      // All assignments on this job, so we can both count live obligations and scope
+      // the settlement-drain sum to this job's assignment ids.
+      const assignmentsOnJob = await prisma.assignment.findMany({
+        where: { jobId: job.id },
+        select: { id: true, status: true },
+      });
+      const assignmentIds = assignmentsOnJob.map((a) => a.id);
+
+      // Settlement legs on this job's assignments: the negative (escrow-debit) leg of
+      // any escrow_release / refund / partial_payout. We need both the total drained
+      // magnitude AND which assignments are already settled.
+      const settlementLegs = assignmentIds.length
+        ? await prisma.ledgerEntry.findMany({
+            where: {
+              reason: { in: ['escrow_release', 'refund', 'partial_payout'] },
+              refType: 'assignment',
+              refId: { in: assignmentIds },
+              amountMinor: { lt: 0 },
+            },
+            select: { refId: true, amountMinor: true },
+          })
+        : [];
+      const drained = settlementLegs.reduce((acc, l) => acc - (l.amountMinor as bigint), 0n); // positive
+      const settledIds = new Set(settlementLegs.map((l) => l.refId));
+      const escrowForJob = funded - drained;
+
+      // Obligations = assignments in a live (not dead) state that have NOT been settled
+      // yet — each still owes up to one gross from escrow. A completed-and-released
+      // assignment is already drained AND no longer an obligation (excluded via
+      // settledIds), so escrow isn't double-counted. Terminal cancel/decline/expire
+      // never settle and aren't obligations either.
+      const LIVE = new Set([
+        'assigned', 'confirmed', 'in_progress', 'paused',
+        'awaiting_employer_confirm', 'awaiting_worker_confirm', 'awaiting_ops_review',
+        'in_review_window', 'disputed', 'completed',
+      ]);
+      const liveObligations = assignmentsOnJob.filter(
+        (a) => LIVE.has(a.status) && !settledIds.has(a.id),
+      ).length;
+
+      const required = perAssignmentGross * BigInt(liveObligations + 1);
+      if (escrowForJob < required) {
         return err(
           'CONFLICT',
-          `escrow not funded: have=${have.toString()} target=${target.toString()}`,
+          `escrow not funded: available=${escrowForJob.toString()} required=${required.toString()}`,
         );
       }
     }

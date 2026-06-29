@@ -265,3 +265,94 @@ describe('escrow — workbench resolutions release/refund correctly', () => {
     expect(await reconcileWallets()).toEqual([]);
   });
 });
+
+describe('escrow — solvency gate prevents insolvency (audit CRITICAL)', () => {
+  it('after a slot is refunded and re-opened, a second accept on it is rejected — escrow never goes negative', async () => {
+    // 1-headcount job, fully funded for exactly one assignment's gross.
+    const { employer, worker, jobId } = await buildEscrowJob({ rate: 4000, days: 2, headcount: 1 });
+    await escrowService.fundForJob({ jobId, employerId: employer.id }); // funds 800_000
+
+    const applied = await applicationService.apply({
+      workerId: worker.id,
+      jobId,
+      input: { idempotency_key: newKey() },
+    });
+    if (!applied.ok) throw new Error();
+    const slot = await prisma.jobSlot.findFirstOrThrow({ where: { jobId } });
+    const accepted = await assignmentService.acceptApplication({
+      employerId: employer.id,
+      applicationId: applied.value.applicationId,
+      input: { slot_id: slot.id, expected_slot_version: slot.version, idempotency_key: newKey() },
+    });
+    if (!accepted.ok) throw new Error();
+
+    // Refund that assignment (drains escrow to 0) and free the slot for re-fill.
+    const refund = await escrowService.refundForAssignment({ assignmentId: accepted.value.assignmentId });
+    expect(refund.ok).toBe(true);
+    await prisma.assignment.update({
+      where: { id: accepted.value.assignmentId },
+      data: { status: 'cancelled_by_employer', version: { increment: 1 } },
+    });
+    await prisma.jobSlot.update({
+      where: { id: slot.id },
+      data: { status: 'open', assignedWorkerId: null, version: { increment: 1 } },
+    });
+    // Slot reopened → job is open for applications again (scheduler does this in prod).
+    await prisma.job.update({ where: { id: jobId }, data: { status: 'open' } });
+    const escrowAfterRefund = await prisma.wallet.findFirstOrThrow({ where: { kind: 'escrow_holding' } });
+    expect(escrowAfterRefund.balanceMinor).toBe(0n);
+
+    // A second worker applies + the employer tries to accept onto the re-opened slot.
+    const worker2 = await makeUser({ role: 'worker', kyc: 2 });
+    const applied2 = await applicationService.apply({
+      workerId: worker2.id,
+      jobId,
+      input: { idempotency_key: newKey() },
+    });
+    if (!applied2.ok) throw new Error();
+    const freshSlot = await prisma.jobSlot.findFirstOrThrow({ where: { id: slot.id } });
+
+    // The stale gate (sum escrow_fund only) would see 800_000 funded and ACCEPT,
+    // letting a later release push escrow_holding to -800_000. The fixed gate computes
+    // available escrow = funded(800k) − drained(800k) = 0 < required 800k → CONFLICT.
+    const secondAccept = await assignmentService.acceptApplication({
+      employerId: employer.id,
+      applicationId: applied2.value.applicationId,
+      input: { slot_id: freshSlot.id, expected_slot_version: freshSlot.version, idempotency_key: newKey() },
+    });
+    expect(secondAccept.ok).toBe(false);
+    if (!secondAccept.ok) expect(secondAccept.code).toBe('CONFLICT');
+
+    // Escrow is still solvent and the books reconcile.
+    const escrowFinal = await prisma.wallet.findFirstOrThrow({ where: { kind: 'escrow_holding' } });
+    expect(escrowFinal.balanceMinor).toBe(0n);
+    expect(await reconcileWallets()).toEqual([]);
+  });
+
+  it('a 2-headcount job funded for 2 accepts both workers but rejects a 3rd (over-hire guard)', async () => {
+    const { employer, worker, jobId } = await buildEscrowJob({ rate: 4000, days: 1, headcount: 2 });
+    await escrowService.fundForJob({ jobId, employerId: employer.id }); // funds 2 × 400_000 = 800_000
+
+    const slots = await prisma.jobSlot.findMany({ where: { jobId }, orderBy: { slotIndex: 'asc' } });
+    // Accept worker 1 on slot 1.
+    const a1 = await applicationService.apply({ workerId: worker.id, jobId, input: { idempotency_key: newKey() } });
+    if (!a1.ok) throw new Error();
+    const acc1 = await assignmentService.acceptApplication({
+      employerId: employer.id,
+      applicationId: a1.value.applicationId,
+      input: { slot_id: slots[0]!.id, expected_slot_version: slots[0]!.version, idempotency_key: newKey() },
+    });
+    expect(acc1.ok).toBe(true);
+
+    // Accept worker 2 on slot 2 — still within funded budget.
+    const w2 = await makeUser({ role: 'worker', kyc: 2 });
+    const a2 = await applicationService.apply({ workerId: w2.id, jobId, input: { idempotency_key: newKey() } });
+    if (!a2.ok) throw new Error();
+    const acc2 = await assignmentService.acceptApplication({
+      employerId: employer.id,
+      applicationId: a2.value.applicationId,
+      input: { slot_id: slots[1]!.id, expected_slot_version: slots[1]!.version, idempotency_key: newKey() },
+    });
+    expect(acc2.ok).toBe(true);
+  });
+});
