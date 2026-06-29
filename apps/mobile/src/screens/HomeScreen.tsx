@@ -10,6 +10,7 @@ import { KafilLottie } from '../motion/KafilLottie';
 import { JobDetailScreen } from './JobDetailScreen';
 import { PostJobScreen } from './PostJobScreen';
 import { MyActivityScreen } from './MyActivityScreen';
+import { ChatListScreen } from './ChatListScreen';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -21,7 +22,7 @@ interface Job {
   status: string;
 }
 
-type Modal = 'detail' | 'post' | 'activity';
+type Modal = 'detail' | 'post' | 'activity' | 'chats';
 
 export function HomeScreen() {
   const { api, signOut, inCooldown } = useAuth();
@@ -80,6 +81,10 @@ export function HomeScreen() {
     return <MyActivityScreen onBack={() => setModal(null)} />;
   }
 
+  if (modal === 'chats') {
+    return <ChatListScreen onBack={() => setModal(null)} />;
+  }
+
   const isEmployer = roles.includes('employer');
 
   return (
@@ -97,11 +102,14 @@ export function HomeScreen() {
 
       <View style={styles.actionRow}>
         <Pressable onPress={() => setModal('activity')} style={styles.actionBtn}>
-          <Text style={styles.actionBtnText}>My activity</Text>
+          <Text style={styles.actionBtnText}>Activity</Text>
+        </Pressable>
+        <Pressable onPress={() => setModal('chats')} style={styles.actionBtn}>
+          <Text style={styles.actionBtnText}>Chats</Text>
         </Pressable>
         {isEmployer ? (
           <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]}>
-            <Text style={[styles.actionBtnText, { color: 'white' }]}>+ Post a job</Text>
+            <Text style={[styles.actionBtnText, { color: 'white' }]}>+ Post</Text>
           </Pressable>
         ) : null}
       </View>
