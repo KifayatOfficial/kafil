@@ -14,6 +14,14 @@ import { smsProvider } from '../providers/sms.provider';
 // Process-local map is fine until we add Redis.
 const otpStore = new Map<string, { otp: string; expiresAt: number; attempts: number }>();
 
+/**
+ * Test-only hook to read the pending OTP for a phone. Production code never imports
+ * this; integration tests use it to drive the verify flow without log-scraping.
+ */
+export function __test_getPendingOtp(phoneE164: string): string | undefined {
+  return otpStore.get(phoneE164)?.otp;
+}
+
 const OTP_TTL_MS = 5 * 60_000;
 const OTP_MAX_ATTEMPTS = 5;
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60_000;
@@ -55,6 +63,7 @@ export const authService = {
       accessToken: string;
       refreshToken: string;
       sessionId: string;
+      cooldown: boolean;
     }>
   > {
     const parse = VerifyOtpInput.safeParse(input);
@@ -135,7 +144,14 @@ export const authService = {
       });
 
       const accessToken = signAccessToken({ userId: user.id, sessionId: session.id });
-      return { userId: user.id, isNew, accessToken, refreshToken, sessionId: session.id };
+      return {
+        userId: user.id,
+        isNew,
+        accessToken,
+        refreshToken,
+        sessionId: session.id,
+        cooldown, // §24/A1 — client must show banner + disable money actions
+      };
     });
 
     return ok(result);

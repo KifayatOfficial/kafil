@@ -53,3 +53,7 @@ prisma/migrations/dev.db*
 # misc
 tmp/
 .tmp/
+
+# .pending-workflow/ holds files awaiting a workflow-scoped PAT to be pushed
+# under .github/. See PUSHING.md.
+.pending-workflow/

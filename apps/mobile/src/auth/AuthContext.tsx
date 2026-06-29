@@ -1,0 +1,179 @@
+// React context for session state. The single source of truth for "am I signed in?"
+// — components subscribe to this rather than reading SecureStore directly.
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import Constants from 'expo-constants';
+import {
+  KafilApiClient,
+  KafilAuth,
+  randomUUID,
+} from '@kafil/core';
+import {
+  clearSession,
+  getDeviceFingerprint,
+  loadSession,
+  saveSession,
+  type PersistedSession,
+} from './storage';
+
+export interface AuthState {
+  status: 'loading' | 'signedOut' | 'signedIn';
+  session: PersistedSession | null;
+  /** True when the active session is in §24/A1 cooldown (no money actions). */
+  inCooldown: boolean;
+  /** Trigger sign-in flow components; throws on validation. */
+  requestOtp: (phone: string) => Promise<{ sent: true }>;
+  verifyOtp: (
+    phone: string,
+    otp: string,
+  ) => Promise<{ userId: string; isNew: boolean; cooldown: boolean }>;
+  signOut: () => Promise<void>;
+  /** Typed API client bound to current session (rotates token automatically). */
+  api: KafilApiClient;
+  auth: KafilAuth;
+  deviceFingerprint: string;
+}
+
+const Ctx = createContext<AuthState | null>(null);
+
+const API_URL =
+  (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ?? 'http://localhost:3001';
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [status, setStatus] = useState<AuthState['status']>('loading');
+  const [session, setSession] = useState<PersistedSession | null>(null);
+  const [fingerprint, setFingerprint] = useState<string>('');
+
+  // Build one client; getAccessToken closes over `session` state so token rotation works.
+  const sessionRef = useStableRef(session);
+  const api = useMemo(
+    () =>
+      new KafilApiClient({
+        baseUrl: API_URL,
+        getAccessToken: () => sessionRef.current?.accessToken ?? null,
+        onUnauthorized: async () => {
+          // Soft handler: try refresh once. If refresh fails, sign out.
+          const cur = sessionRef.current;
+          if (!cur) return;
+          const r = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: cur.refreshToken }),
+          })
+            .then((res) => res.json() as Promise<{ ok: boolean; value?: { accessToken: string; refreshToken: string } }>)
+            .catch(() => ({ ok: false } as { ok: false }));
+          if (r.ok && r.value) {
+            const next: PersistedSession = {
+              ...cur,
+              accessToken: r.value.accessToken,
+              refreshToken: r.value.refreshToken,
+            };
+            await saveSession(next);
+            setSession(next);
+            return;
+          }
+          await clearSession();
+          setSession(null);
+          setStatus('signedOut');
+        },
+      }),
+    [sessionRef],
+  );
+  const auth = useMemo(() => new KafilAuth(api), [api]);
+
+  // Bootstrap on mount.
+  useEffect(() => {
+    (async () => {
+      const [s, fp] = await Promise.all([loadSession(), getDeviceFingerprint(randomUUID)]);
+      setFingerprint(fp);
+      if (s) {
+        setSession(s);
+        setStatus('signedIn');
+      } else {
+        setStatus('signedOut');
+      }
+    })().catch((e: unknown) => {
+      console.warn('auth bootstrap failed', e);
+      setStatus('signedOut');
+    });
+  }, []);
+
+  const requestOtp = useCallback(
+    async (phone: string) => {
+      const r = await auth.requestOtp({ phone_e164: phone, device_fingerprint: fingerprint });
+      if (!r.success) throw new Error((r.data as { message?: string }).message ?? 'OTP request failed');
+      return { sent: true as const };
+    },
+    [auth, fingerprint],
+  );
+
+  const verifyOtp = useCallback(
+    async (phone: string, otp: string) => {
+      const r = await auth.verifyOtp({
+        phone_e164: phone,
+        otp,
+        device_fingerprint: fingerprint,
+      });
+      if (!r.success || !('value' in r.data && r.data.value)) {
+        throw new Error((r.data as { message?: string }).message ?? 'OTP verification failed');
+      }
+      const v = r.data.value;
+      const cooldown = v.cooldown ?? false;
+      const next: PersistedSession = {
+        accessToken: v.accessToken,
+        refreshToken: v.refreshToken,
+        userId: v.userId,
+        sessionId: v.sessionId,
+        cooldownUntil: cooldown ? Date.now() + 24 * 60 * 60_000 : null,
+      };
+      await saveSession(next);
+      setSession(next);
+      setStatus('signedIn');
+      return { userId: v.userId, isNew: v.isNew, cooldown };
+    },
+    [auth, fingerprint],
+  );
+
+  const signOut = useCallback(async () => {
+    await clearSession();
+    setSession(null);
+    setStatus('signedOut');
+  }, []);
+
+  const inCooldown = !!session?.cooldownUntil && session.cooldownUntil > Date.now();
+
+  const value: AuthState = {
+    status,
+    session,
+    inCooldown,
+    requestOtp,
+    verifyOtp,
+    signOut,
+    api,
+    auth,
+    deviceFingerprint: fingerprint,
+  };
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useAuth(): AuthState {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+}
+
+/** A stable ref that always points at the latest `value`. Lets memoized clients
+ *  read fresh state without re-binding their callbacks. */
+function useStableRef<T>(value: T): { current: T } {
+  const [ref] = useState<{ current: T }>(() => ({ current: value }));
+  ref.current = value;
+  return ref;
+}

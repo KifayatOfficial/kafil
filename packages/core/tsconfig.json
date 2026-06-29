@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    // @kafil/core targets Node (apps/api) AND browsers (apps/web) AND React Native
+    // (apps/mobile). DOM lib gives us Crypto + fetch types in the shared client without
+    // pulling in browser-specific runtime; consumers ignore what they don't use.
+    "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*"]
 }

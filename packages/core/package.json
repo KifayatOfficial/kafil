@@ -10,7 +10,8 @@
     "./schemas": "./src/schemas/index.ts",
     "./motion": "./src/motion/index.ts",
     "./i18n": "./src/i18n/index.ts",
-    "./state-machine": "./src/state-machine/index.ts"
+    "./state-machine": "./src/state-machine/index.ts",
+    "./api-client": "./src/api-client/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
