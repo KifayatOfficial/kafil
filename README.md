@@ -70,3 +70,15 @@ Authoritative source: `KAFIL_SPEC_v1.1_ADDENDUM.md §4.3`. The canonical service
 ## Motion (§27)
 
 Six-class taxonomy enforced via `packages/core/motion`. CI lints Lottielab assets for size/expressions/masks per §27.4. Never use Lottie for screen transitions (always native springs).
+
+## Voice prompts (§25.1)
+
+Low-literacy onboarding uses **recorded Pashto/Urdu narration, never TTS**. The catalog lives in `packages/core/voice` (`VoiceCatalog`); the mobile player is `apps/mobile/src/voice` (`VoiceProvider` / `useVoicePrompt` / `VoicePromptButton`). Each onboarding screen autoplays its prompt on enter and shows a 🔊 replay button.
+
+**Adding recordings is config, not code:**
+
+1. Record one `.m4a` (AAC) file per prompt key per voiced language (`ps`, `ur`). Keys are the `VoiceKey` union in `packages/core/src/voice/index.ts`; the narration should match the screen's i18n string.
+2. Upload to your audio CDN at the path `<base>/<lang>/<key>.m4a` — e.g. `https://cdn.kafil.pk/voice/ps/onboarding.welcome.m4a`.
+3. Set `extra.voiceBaseUrl` in `apps/mobile/app.json` to the CDN base. Until it's set (dev / restricted envs), every prompt resolves to `null` and the player + button degrade to a silent no-op — text and icons still carry the screen.
+
+While recordings are partial, pass a `VoiceCatalog({ baseUrl, available: [...] })` allowlist so unrecorded keys stay silent instead of 404-ing.

@@ -12,7 +12,8 @@
     "./i18n": "./src/i18n/index.ts",
     "./state-machine": "./src/state-machine/index.ts",
     "./api-client": "./src/api-client/index.ts",
-    "./outbox": "./src/outbox/index.ts"
+    "./outbox": "./src/outbox/index.ts",
+    "./voice": "./src/voice/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

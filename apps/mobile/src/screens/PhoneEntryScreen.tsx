@@ -1,6 +1,7 @@
 // First onboarding screen. Pashto-first (RTL), large tap targets, mascot above.
 // Class A press feedback on every interactive surface (§27.3).
-// Voice prompt button per §25.1 (audio file integrates later — placeholder Pressable now).
+// §25.1 — recorded narration: autoplays the welcome prompt on enter, with a 🔊
+// replay button. Both no-op gracefully until recordings are configured (voiceBaseUrl).
 
 import { useState } from 'react';
 import {
@@ -17,6 +18,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -26,6 +28,7 @@ interface Props {
 
 export function PhoneEntryScreen({ onOtpSent }: Props) {
   const { requestOtp, lang } = useAuth();
+  useVoicePrompt('onboarding.welcome');
   const [raw, setRaw] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +62,10 @@ export function PhoneEntryScreen({ onOtpSent }: Props) {
     <View style={styles.root}>
       <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.E_MASCOT} style={styles.mascot} loop />
 
-      <Text style={styles.title}>{i18n.t(lang, 'onboarding.welcome')}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{i18n.t(lang, 'onboarding.welcome')}</Text>
+        <VoicePromptButton promptKey="onboarding.welcome" accessibilityLabel={i18n.t(lang, 'voice.replay')} />
+      </View>
       <Text style={styles.subtitle}>+92 — Pakistan</Text>
 
       <View style={styles.phoneRow}>
@@ -111,12 +117,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mascot: { width: 120, height: 120 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 16,
+  },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: motion.color.text,
-    marginTop: 16,
     textAlign: 'center',
+    flexShrink: 1,
   },
   subtitle: { color: '#888', marginTop: 6, marginBottom: 32 },
   phoneRow: {

@@ -15,6 +15,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { SkeletonList } from '../components/Skeleton';
+import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
 
 interface SpecialtyRow {
   id: string;
@@ -41,6 +42,7 @@ const FALLBACK_ICON: Record<string, string> = {
 
 export function WorkerSpecialtiesScreen({ onDone }: Props) {
   const { api, lang } = useAuth();
+  useVoicePrompt('onboarding.specialties');
   const [items, setItems] = useState<SpecialtyRow[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +98,10 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>{i18n.t(lang, 'onboarding.specialties_title')}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{i18n.t(lang, 'onboarding.specialties_title')}</Text>
+        <VoicePromptButton promptKey="onboarding.specialties" accessibilityLabel={i18n.t(lang, 'voice.replay')} />
+      </View>
       <Text style={styles.subtitle}>{i18n.t(lang, 'common.tap_all')}</Text>
 
       {!items ? (
@@ -159,7 +164,8 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: motion.color.bg, padding: 24, paddingTop: 60 },
-  title: { fontSize: 24, fontWeight: '700', color: motion.color.text, marginBottom: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  title: { fontSize: 24, fontWeight: '700', color: motion.color.text, flexShrink: 1 },
   subtitle: { color: '#888', marginBottom: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 24 },
   tile: {

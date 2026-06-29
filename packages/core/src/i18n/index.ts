@@ -89,7 +89,8 @@ type StringKey =
   | 'offline.banner'
   | 'chat.no_messages'
   | 'chat.sending'
-  | 'chat.send_failed';
+  | 'chat.send_failed'
+  | 'voice.replay';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -178,6 +179,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'chat.no_messages': 'تر اوسه پیغام نشته',
     'chat.sending': 'لېږل کیږي…',
     'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
+    'voice.replay': 'بیا واورئ',
   },
   ur: {
     'app.name': 'کافل',
@@ -265,6 +267,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
     'chat.sending': 'بھیجا جا رہا ہے…',
     'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
+    'voice.replay': 'دوبارہ سنیں',
   },
   en: {
     'app.name': 'KAFIL',
@@ -352,6 +355,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'chat.no_messages': 'No messages yet',
     'chat.sending': 'Sending…',
     'chat.send_failed': "Didn't send — tap to retry",
+    'voice.replay': 'Play again',
   },
 };
 

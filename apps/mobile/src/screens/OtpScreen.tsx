@@ -16,6 +16,7 @@ import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
+import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
 
 interface Props {
   phoneE164: string;
@@ -25,6 +26,7 @@ interface Props {
 
 export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
   const { verifyOtp, lang } = useAuth();
+  useVoicePrompt('onboarding.otp');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,10 @@ export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
         <Text style={{ color: motion.color.primary, fontSize: 18 }}>←</Text>
       </Pressable>
 
-      <Text style={styles.title}>{i18n.t(lang, 'onboarding.otp_title')}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{i18n.t(lang, 'onboarding.otp_title')}</Text>
+        <VoicePromptButton promptKey="onboarding.otp" accessibilityLabel={i18n.t(lang, 'voice.replay')} />
+      </View>
       <Text style={styles.subtitle}>{phoneE164}</Text>
 
       {/* Six boxes that visually mirror the 6-digit code. The single TextInput
@@ -125,7 +130,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   back: { alignSelf: 'flex-start', padding: 8 },
-  title: { fontSize: 22, fontWeight: '700', color: motion.color.text, marginTop: 24 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
+  title: { fontSize: 22, fontWeight: '700', color: motion.color.text, flexShrink: 1 },
   subtitle: { color: '#888', marginTop: 4, marginBottom: 32 },
   boxes: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   box: {

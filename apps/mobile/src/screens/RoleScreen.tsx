@@ -9,6 +9,7 @@ import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
+import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
 
 type Choice = 'worker' | 'employer' | 'both';
 
@@ -18,6 +19,7 @@ interface Props {
 
 export function RoleScreen({ onDone }: Props) {
   const { api, lang } = useAuth();
+  useVoicePrompt('onboarding.role');
   const [busy, setBusy] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +52,10 @@ export function RoleScreen({ onDone }: Props) {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>{i18n.t(lang, 'onboarding.role_prompt')}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{i18n.t(lang, 'onboarding.role_prompt')}</Text>
+        <VoicePromptButton promptKey="onboarding.role" accessibilityLabel={i18n.t(lang, 'voice.replay')} />
+      </View>
       <Text style={styles.subtitle}>{i18n.t(lang, 'onboarding.role_subtitle')}</Text>
 
       <Option label={i18n.t(lang, 'onboarding.role_worker')} sub="مزدور / کارګر" choice="worker" busy={busy === 'worker'} onPress={submit} />
@@ -99,7 +104,8 @@ function Option({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: motion.color.bg, padding: 24, paddingTop: 60 },
-  title: { fontSize: 24, fontWeight: '700', color: motion.color.text, marginBottom: 6 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  title: { fontSize: 24, fontWeight: '700', color: motion.color.text, flexShrink: 1 },
   subtitle: { color: '#888', marginBottom: 24 },
   option: {
     flexDirection: 'row',
