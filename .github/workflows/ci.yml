@@ -89,5 +89,8 @@ jobs:
       - name: Typecheck — @kafil/mobile
         run: npm --workspace @kafil/mobile run typecheck
 
+      - name: Tests — @kafil/core (vitest, pure — outbox/§13 etc.)
+        run: npm --workspace @kafil/core run test
+
       - name: Tests — @kafil/api (vitest, real Postgres)
         run: npm --workspace @kafil/api run test

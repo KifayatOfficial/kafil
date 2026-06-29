@@ -11,6 +11,7 @@ import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { motion } from '@kafil/core';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
+import { OutboxProvider } from './src/outbox/OutboxContext';
 import { PhoneEntryScreen } from './src/screens/PhoneEntryScreen';
 import { OtpScreen } from './src/screens/OtpScreen';
 import { RoleScreen } from './src/screens/RoleScreen';
@@ -23,8 +24,10 @@ type OnboardingStep = 'role' | 'worker_specialties' | 'done';
 export default function App() {
   return (
     <AuthProvider>
-      <StatusBar style="auto" />
-      <Flow />
+      <OutboxProvider>
+        <StatusBar style="auto" />
+        <Flow />
+      </OutboxProvider>
     </AuthProvider>
   );
 }

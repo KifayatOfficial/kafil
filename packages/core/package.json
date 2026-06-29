@@ -11,12 +11,17 @@
     "./motion": "./src/motion/index.ts",
     "./i18n": "./src/i18n/index.ts",
     "./state-machine": "./src/state-machine/index.ts",
-    "./api-client": "./src/api-client/index.ts"
+    "./api-client": "./src/api-client/index.ts",
+    "./outbox": "./src/outbox/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.9"
   }
 }

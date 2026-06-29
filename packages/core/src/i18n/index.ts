@@ -84,6 +84,9 @@ type StringKey =
   | 'job.stale_title'
   | 'job.stale_body'
   | 'job.back_to_jobs'
+  | 'offline.apply_will_send'
+  | 'offline.queued'
+  | 'offline.banner'
   | 'chat.no_messages';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
@@ -167,6 +170,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.stale_title': 'دا کار ډک شو',
     'job.stale_body': 'دا کار بل کارګر ونیو — یا تاسو دمخه غوښتنه کړې. نږدې ورته بل وګورئ.',
     'job.back_to_jobs': 'بیرته کارونو ته',
+    'offline.apply_will_send': 'تاسو آفلاین یاست. ستاسو غوښتنه به وساتل شي او کله چې انټرنیټ بیرته راشي خپله ولېږل کیږي.',
+    'offline.queued': 'په قطار کې — به ولېږل شي',
+    'offline.banner': 'آفلاین — بدلونونه ساتل کیږي',
     'chat.no_messages': 'تر اوسه پیغام نشته',
   },
   ur: {
@@ -249,6 +255,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.stale_title': 'یہ کام بھر گیا',
     'job.stale_body': 'یہ کام کسی اور کارکن نے لے لیا — یا آپ پہلے درخواست دے چکے ہیں۔ قریب کوئی ملتا جلتا دیکھیں۔',
     'job.back_to_jobs': 'کاموں پر واپس',
+    'offline.apply_will_send': 'آپ آف لائن ہیں۔ آپ کی درخواست محفوظ ہو جائے گی اور انٹرنیٹ واپس آتے ہی خود بھیج دی جائے گی۔',
+    'offline.queued': 'قطار میں — بھیجی جائے گی',
+    'offline.banner': 'آف لائن — تبدیلیاں محفوظ ہو رہی ہیں',
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
   },
   en: {
@@ -331,6 +340,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.stale_title': 'This job just filled',
     'job.stale_body': "This job was taken by another worker — or you've already applied. Try a similar one nearby.",
     'job.back_to_jobs': 'Back to jobs',
+    'offline.apply_will_send': "You're offline. Your application is saved and will send automatically when you're back online.",
+    'offline.queued': 'Queued — will send',
+    'offline.banner': 'Offline — your changes are saved',
     'chat.no_messages': 'No messages yet',
   },
 };

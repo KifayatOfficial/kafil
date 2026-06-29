@@ -6,7 +6,7 @@
 //   (the "similar" list is added in a later round; for now we show the friendly state).
 // §10/F1 — workers never pay to apply: the UI never asks for money on this screen.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,6 +21,7 @@ import {
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
+import { useOutbox } from '../outbox/OutboxContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
@@ -48,16 +49,49 @@ interface Props {
   onApplied: () => void;
 }
 
-type Phase = 'loading' | 'ready' | 'applying' | 'applied' | 'stale' | 'error';
+// 'queued' = accepted offline; the outbox will send it when connectivity returns.
+type Phase = 'loading' | 'ready' | 'applying' | 'queued' | 'applied' | 'stale' | 'error';
 
 export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
   const { api, lang } = useAuth();
+  const { enqueue, ops, online } = useOutbox();
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [proposedRate, setProposedRate] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
+  // The outbox op id for this apply, once enqueued — we track its lifecycle below.
+  const [opId, setOpId] = useState<string | null>(null);
+
+  // Reconcile UI with the server-authoritative outbox outcome (§13/§14). The op may
+  // resolve seconds later (online) or hours later (was offline) — either way this
+  // effect maps its terminal state onto the screen without the user re-tapping.
+  const trackedOp = useMemo(() => ops.find((o) => o.id === opId), [ops, opId]);
+  useEffect(() => {
+    if (!trackedOp) return;
+    if (trackedOp.status === 'done') {
+      void haptic(motion.hapticToken.SUCCESS);
+      setPhase('applied');
+      const t = setTimeout(onApplied, 1500);
+      return () => clearTimeout(t);
+    }
+    if (trackedOp.status === 'conflict') {
+      // §26/M12 — lost the race (job filled / duplicate application). Soft state.
+      void haptic(motion.hapticToken.WARNING);
+      setPhase('stale');
+      return;
+    }
+    if (trackedOp.status === 'failed') {
+      void haptic(motion.hapticToken.ERROR);
+      setError(trackedOp.outcome?.message ?? `apply failed (${trackedOp.outcome?.status ?? 0})`);
+      setPhase('error');
+      return;
+    }
+    // Still pending/sending: show "applying" when we have a live connection, else
+    // "queued — will send when you're back online".
+    setPhase(online ? 'applying' : 'queued');
+  }, [trackedOp, online, onApplied]);
 
   useEffect(() => {
     (async () => {
@@ -76,40 +110,31 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
   }, [api, jobId]);
 
   const apply = async () => {
-    if (!job || phase === 'applying' || phase === 'applied') return;
-    setPhase('applying');
+    if (!job || phase === 'applying' || phase === 'queued' || phase === 'applied') return;
     setError(null);
     void haptic(motion.hapticToken.TAP_MEDIUM);
 
+    // The op id is both the client idempotency key (§24/A7) and the body's
+    // idempotency_key the route expects — one value, reused on every retry.
     const idempotencyKey = randomUUID();
     const body: Record<string, unknown> = { idempotency_key: idempotencyKey };
     if (message.trim()) body.message = message.trim();
     const proposed = Number.parseInt(proposedRate, 10);
     if (Number.isFinite(proposed) && proposed > 0) body.proposed_rate_pkr = proposed;
 
-    const r = await api.post(`/api/jobs/${jobId}/applications`, body, {
-      idempotencyKey,
+    // §13 — optimistic enqueue. The mutation is durably queued *before* we touch the
+    // network; the trackedOp effect drives every UI transition from here. A flaky
+    // connection (or none at all) no longer loses the apply.
+    const op = await enqueue({
+      method: 'POST',
+      path: `/api/jobs/${jobId}/applications`,
+      body,
+      kind: 'apply',
+      id: idempotencyKey,
+      meta: { jobId },
     });
-
-    if (r.success) {
-      void haptic(motion.hapticToken.SUCCESS);
-      setPhase('applied');
-      // Small delay so the user sees the class-D reward.
-      setTimeout(onApplied, 1500);
-      return;
-    }
-
-    // §26/M12 — 409 conflict on apply: typically "job already filled" or
-    // "you have an active application on this job". Either way, soft-state.
-    if (r.status === 409) {
-      void haptic(motion.hapticToken.WARNING);
-      setPhase('stale');
-      return;
-    }
-
-    void haptic(motion.hapticToken.ERROR);
-    setError((r.data as { message?: string }).message ?? `apply failed (${r.status})`);
-    setPhase('error');
+    setOpId(op.id);
+    setPhase(online ? 'applying' : 'queued');
   };
 
   const { scale, onPressIn, onPressOut } = usePressScale();
@@ -166,6 +191,16 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
               maxLength={6}
             />
 
+            {/* §13 — when offline, tell the worker their apply will still go through.
+                This is the difference between "the app is broken" and "I'm covered". */}
+            {!online ? (
+              <View style={styles.offlineBanner}>
+                <Text style={styles.offlineText}>
+                  {i18n.t(lang, 'offline.apply_will_send')}
+                </Text>
+              </View>
+            ) : null}
+
             {/* §10/F1 — explicit reassurance, surfaced once not buried in T&Cs */}
             <Text style={styles.safetyNote}>
               KAFIL never asks workers to pay to apply. If anyone requests a fee,{' '}
@@ -184,17 +219,20 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
                 void haptic(motion.hapticToken.TAP_LIGHT);
               }}
               onPressOut={onPressOut}
-              disabled={phase === 'applying' || job?.status !== 'open'}
+              disabled={phase === 'applying' || phase === 'queued' || job?.status !== 'open'}
             >
               <Animated.View
                 style={[
                   styles.cta,
-                  (phase === 'applying' || job?.status !== 'open') && styles.ctaDisabled,
+                  (phase === 'applying' || phase === 'queued' || job?.status !== 'open') &&
+                    styles.ctaDisabled,
                   ctaAnimated,
                 ]}
               >
                 {phase === 'applying' ? (
                   <ActivityIndicator color="white" />
+                ) : phase === 'queued' ? (
+                  <Text style={styles.ctaText}>{i18n.t(lang, 'offline.queued')}</Text>
                 ) : (
                   <Text style={styles.ctaText}>{i18n.t(lang, 'job.apply')}</Text>
                 )}
@@ -283,6 +321,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: motion.color.text,
   },
+  offlineBanner: {
+    backgroundColor: motion.color.surface,
+    borderRadius: motion.radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: motion.color.warning,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 16,
+  },
+  offlineText: { color: motion.color.text, fontSize: 13 },
   safetyNote: {
     color: motion.color.warning,
     fontSize: 12,
