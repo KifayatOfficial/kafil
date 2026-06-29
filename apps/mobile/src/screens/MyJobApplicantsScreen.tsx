@@ -16,7 +16,8 @@ import {
   View,
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion, randomUUID } from '@kafil/core';
+import { i18n, motion, randomUUID } from '@kafil/core';
+import { SkeletonList } from '../components/Skeleton';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
@@ -64,7 +65,7 @@ interface Props {
 }
 
 export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
-  const { api } = useAuth();
+  const { api, lang } = useAuth();
   const [job, setJob] = useState<JobDetail | null>(null);
   const [applicants, setApplicants] = useState<Applicant[] | null>(null);
   const [acceptingAppId, setAcceptingAppId] = useState<string | null>(null);
@@ -125,8 +126,8 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={16}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
+        <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
+          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
         <Text style={styles.h1} numberOfLines={1}>
           {job?.title ?? '…'}
@@ -151,9 +152,9 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {!applicants ? (
-          <ActivityIndicator />
+          <SkeletonList rows={3} />
         ) : applicants.length === 0 ? (
-          <Text style={styles.muted}>No applicants yet — share this job to get workers.</Text>
+          <Text style={styles.muted}>{i18n.t(lang, 'applicants.empty')}</Text>
         ) : (
           applicants.map((a) => (
             <ApplicantCard

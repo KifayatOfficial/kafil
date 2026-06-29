@@ -42,7 +42,41 @@ type StringKey =
   | 'wallet.sent'
   | 'wallet.kyc_required'
   | 'wallet.cooldown'
-  | 'wallet.success_title';
+  | 'wallet.success_title'
+  | 'common.back'
+  | 'common.send'
+  | 'common.sign_out'
+  | 'common.loading'
+  | 'common.message_placeholder'
+  | 'common.tap_all'
+  | 'nav.home'
+  | 'nav.activity'
+  | 'nav.chats'
+  | 'nav.messages'
+  | 'nav.chat'
+  | 'nav.post_job'
+  | 'security.cooldown_title'
+  | 'security.cooldown_body'
+  | 'onboarding.otp_title'
+  | 'onboarding.sms_notice'
+  | 'onboarding.role_prompt'
+  | 'onboarding.role_subtitle'
+  | 'onboarding.role_worker'
+  | 'onboarding.role_employer'
+  | 'onboarding.specialties_title'
+  | 'chat.welcome'
+  | 'chat.empty'
+  | 'job.post_title'
+  | 'job.post_subtitle'
+  | 'job.live_immediately'
+  | 'job.applied'
+  | 'job.posted'
+  | 'activity.title'
+  | 'activity.applications'
+  | 'activity.my_jobs'
+  | 'activity.no_applications'
+  | 'activity.no_jobs'
+  | 'applicants.empty';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -84,6 +118,40 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'wallet.kyc_required': 'د پیسو ایستلو لپاره د شناختي کارت تصدیق اړین دی',
     'wallet.cooldown': 'د نوي وسیلې له امله د پیسو حرکت ۲۴ ساعته بند دی',
     'wallet.success_title': 'پیسې ولېږل شوې!',
+    'common.back': 'شاته',
+    'common.send': 'ولېږئ',
+    'common.sign_out': 'وتل',
+    'common.loading': 'لیکل کیږي…',
+    'common.message_placeholder': 'پیغام ولیکئ',
+    'common.tap_all': 'هرڅه چې مناسب وي وټاکئ',
+    'nav.home': 'کور',
+    'nav.activity': 'فعالیت',
+    'nav.chats': 'خبرې',
+    'nav.messages': 'پیغامونه',
+    'nav.chat': 'خبرې',
+    'nav.post_job': '+ کار',
+    'security.cooldown_title': 'نوی وسیله — د خوندیتوب ځنډ',
+    'security.cooldown_body': 'ستاسو د خوندیتوب لپاره، د نوي وسیلې څخه د ننوتلو وروسته د ۲۴ ساعتونو لپاره د پیسو کارونه بند دي. لټون او خبرې عادي کار کوي.',
+    'onboarding.otp_title': '۶ عددي کوډ ولیکئ',
+    'onboarding.sms_notice': 'موږ به ستاسو فون ته ۶ عددي کوډ ولېږو. د SMS عادي نرخونه تطبیق کیدی شي.',
+    'onboarding.role_prompt': 'کافل به څنګه کاروئ؟',
+    'onboarding.role_subtitle': 'تاسو دواړه کولی شئ — نن چې مناسب وي هغه وټاکئ.',
+    'onboarding.role_worker': 'کار غواړم',
+    'onboarding.role_employer': 'کارګر غواړم',
+    'onboarding.specialties_title': 'تاسو څه کار کوئ؟',
+    'chat.welcome': 'د پیل لپاره سلام ووایاست.',
+    'chat.empty': 'تر اوسه هیڅ خبرې نشته. کله چې یو کارفرما ستاسو غوښتنه ومني — یا تاسو یو کارګر ومنئ — خبرې پخپله پیل کیږي.',
+    'job.post_title': 'کار خپور کړئ',
+    'job.post_subtitle': 'تشریح کړئ چې څه ته اړتیا لرئ. دقیق اوسئ.',
+    'job.live_immediately': 'ستاسو کار به سمدلاسه فعال شي.',
+    'job.applied': 'وغوښتل شو!',
+    'job.posted': 'کار خپور شو!',
+    'activity.title': 'زما فعالیت',
+    'activity.applications': 'غوښتنې',
+    'activity.my_jobs': 'زما کارونه',
+    'activity.no_applications': 'تر اوسه مو هیڅ غوښتنه نه ده کړې.',
+    'activity.no_jobs': 'تر اوسه مو هیڅ کار نه دی خپور کړی.',
+    'applicants.empty': 'تر اوسه هیڅ غوښتونکی نشته — دا کار شریک کړئ.',
   },
   ur: {
     'app.name': 'کافل',
@@ -124,6 +192,40 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'wallet.kyc_required': 'رقم نکالنے کے لیے شناختی کارد کی تصدیق ضروری ہے',
     'wallet.cooldown': 'نئے آلے کی وجہ سے رقم کی منتقلی 24 گھنٹے بند ہے',
     'wallet.success_title': 'رقم بھیج دی گئی!',
+    'common.back': 'واپس',
+    'common.send': 'بھیجیں',
+    'common.sign_out': 'سائن آؤٹ',
+    'common.loading': 'لوڈ ہو رہا ہے…',
+    'common.message_placeholder': 'پیغام لکھیں',
+    'common.tap_all': 'جو لاگو ہوں سب منتخب کریں',
+    'nav.home': 'ہوم',
+    'nav.activity': 'سرگرمی',
+    'nav.chats': 'چیٹس',
+    'nav.messages': 'پیغامات',
+    'nav.chat': 'چیٹ',
+    'nav.post_job': '+ کام',
+    'security.cooldown_title': 'نیا آلہ — سیکیورٹی وقفہ',
+    'security.cooldown_body': 'آپ کی حفاظت کے لیے، نئے آلے پر سائن ان کے بعد 24 گھنٹے رقم کے کام بند ہیں۔ براؤزنگ اور چیٹ معمول کے مطابق کام کرتے ہیں۔',
+    'onboarding.otp_title': '6 ہندسوں کا کوڈ درج کریں',
+    'onboarding.sms_notice': 'ہم آپ کے فون پر 6 ہندسوں کا کوڈ بھیجیں گے۔ معیاری SMS نرخ لاگو ہو سکتے ہیں۔',
+    'onboarding.role_prompt': 'آپ کافل کیسے استعمال کریں گے؟',
+    'onboarding.role_subtitle': 'آپ دونوں کر سکتے ہیں — جو آج مناسب ہو منتخب کریں۔',
+    'onboarding.role_worker': 'میں کام تلاش کرنا چاہتا ہوں',
+    'onboarding.role_employer': 'میں کارکن رکھنا چاہتا ہوں',
+    'onboarding.specialties_title': 'آپ کیا کام کرتے ہیں؟',
+    'chat.welcome': 'شروع کرنے کے لیے سلام کہیں۔',
+    'chat.empty': 'ابھی تک کوئی گفتگو نہیں۔ جب کوئی آجر آپ کی درخواست قبول کرے — یا آپ کسی کارکن کو قبول کریں — چیٹ خود بخود کھل جاتی ہے۔',
+    'job.post_title': 'کام پوسٹ کریں',
+    'job.post_subtitle': 'بتائیں آپ کو کیا چاہیے۔ واضح رہیں۔',
+    'job.live_immediately': 'آپ کا کام فوراً لائیو ہو جائے گا۔',
+    'job.applied': 'درخواست دے دی!',
+    'job.posted': 'کام پوسٹ ہو گیا!',
+    'activity.title': 'میری سرگرمی',
+    'activity.applications': 'درخواستیں',
+    'activity.my_jobs': 'میرے کام',
+    'activity.no_applications': 'آپ نے ابھی تک کسی چیز کے لیے درخواست نہیں دی۔',
+    'activity.no_jobs': 'آپ نے ابھی تک کوئی کام پوسٹ نہیں کیا۔',
+    'applicants.empty': 'ابھی تک کوئی درخواست گزار نہیں — یہ کام شیئر کریں۔',
   },
   en: {
     'app.name': 'KAFIL',
@@ -164,6 +266,40 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'wallet.kyc_required': 'Cash-out requires CNIC verification',
     'wallet.cooldown': 'Money actions are paused for 24h after a device change',
     'wallet.success_title': 'Money sent!',
+    'common.back': 'Back',
+    'common.send': 'Send',
+    'common.sign_out': 'Sign out',
+    'common.loading': 'Loading…',
+    'common.message_placeholder': 'Type a message',
+    'common.tap_all': 'Tap all that apply.',
+    'nav.home': 'Home',
+    'nav.activity': 'Activity',
+    'nav.chats': 'Chats',
+    'nav.messages': 'Messages',
+    'nav.chat': 'Chat',
+    'nav.post_job': '+ Post',
+    'security.cooldown_title': 'New device — security cooldown',
+    'security.cooldown_body': 'For your safety, money actions are disabled for 24 hours after signing in on a new device. Browsing and chat work normally.',
+    'onboarding.otp_title': 'Enter the 6-digit code',
+    'onboarding.sms_notice': 'We will send a 6-digit code to your phone. Standard SMS rates may apply.',
+    'onboarding.role_prompt': 'How will you use KAFIL?',
+    'onboarding.role_subtitle': 'You can do both — choose what fits today.',
+    'onboarding.role_worker': 'I want to find work',
+    'onboarding.role_employer': 'I want to hire workers',
+    'onboarding.specialties_title': 'What do you do?',
+    'chat.welcome': 'Say salaam to get started.',
+    'chat.empty': "No conversations yet. After an employer accepts your application — or you accept a worker's — a chat opens automatically.",
+    'job.post_title': 'Post a job',
+    'job.post_subtitle': 'Describe what you need. Be specific.',
+    'job.live_immediately': 'Your job will go live immediately.',
+    'job.applied': 'Applied!',
+    'job.posted': 'Job posted!',
+    'activity.title': 'My activity',
+    'activity.applications': 'Applications',
+    'activity.my_jobs': 'My jobs',
+    'activity.no_applications': "You haven't applied to anything yet.",
+    'activity.no_jobs': "You haven't posted any jobs yet.",
+    'applicants.empty': 'No applicants yet — share this job to get workers.',
   },
 };
 

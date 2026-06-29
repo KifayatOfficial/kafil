@@ -1,6 +1,6 @@
 // Authenticated home — job feed. Tapping a card opens JobDetailScreen.
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -12,6 +12,7 @@ import { PostJobScreen } from './PostJobScreen';
 import { MyActivityScreen } from './MyActivityScreen';
 import { ChatListScreen } from './ChatListScreen';
 import { WalletScreen } from './WalletScreen';
+import { SkeletonList } from '../components/Skeleton';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -26,7 +27,7 @@ interface Job {
 type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet';
 
 export function HomeScreen() {
-  const { api, signOut, inCooldown } = useAuth();
+  const { api, signOut, inCooldown, lang } = useAuth();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
@@ -96,39 +97,36 @@ export function HomeScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.E_MASCOT} style={styles.mascot} loop />
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.h1}>{i18n.t('ps', 'app.name')}</Text>
-          <Text style={styles.muted}>Home</Text>
+        <View style={{ flex: 1, marginStart: 10 }}>
+          <Text style={styles.h1}>{i18n.t(lang, 'app.name')}</Text>
+          <Text style={styles.muted}>{i18n.t(lang, 'nav.home')}</Text>
         </View>
-        <Pressable onPress={() => void signOut()} hitSlop={10}>
-          <Text style={{ color: motion.color.primary }}>Sign out</Text>
+        <Pressable onPress={() => void signOut()} hitSlop={10} accessibilityLabel={i18n.t(lang, 'common.sign_out')}>
+          <Text style={{ color: motion.color.primary }}>{i18n.t(lang, 'common.sign_out')}</Text>
         </Pressable>
       </View>
 
       <View style={styles.actionRow}>
-        <Pressable onPress={() => setModal('activity')} style={styles.actionBtn}>
-          <Text style={styles.actionBtnText}>Activity</Text>
+        <Pressable onPress={() => setModal('activity')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'nav.activity')}>
+          <Text style={styles.actionBtnText}>{i18n.t(lang, 'nav.activity')}</Text>
         </Pressable>
-        <Pressable onPress={() => setModal('chats')} style={styles.actionBtn} accessibilityLabel="Chats">
-          <Text style={styles.actionBtnText}>Chats</Text>
+        <Pressable onPress={() => setModal('chats')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'nav.chats')}>
+          <Text style={styles.actionBtnText}>{i18n.t(lang, 'nav.chats')}</Text>
         </Pressable>
-        <Pressable onPress={() => setModal('wallet')} style={styles.actionBtn} accessibilityLabel={i18n.t('ps', 'wallet.title')}>
+        <Pressable onPress={() => setModal('wallet')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'wallet.title')}>
           <Text style={styles.actionBtnText}>💰</Text>
         </Pressable>
         {isEmployer ? (
-          <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]}>
-            <Text style={[styles.actionBtnText, { color: 'white' }]}>+ Post</Text>
+          <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]} accessibilityLabel={i18n.t(lang, 'nav.post_job')}>
+            <Text style={[styles.actionBtnText, { color: 'white' }]}>{i18n.t(lang, 'nav.post_job')}</Text>
           </Pressable>
         ) : null}
       </View>
 
       {inCooldown ? (
         <View style={styles.cooldownBanner}>
-          <Text style={styles.cooldownTitle}>New device — security cooldown</Text>
-          <Text style={styles.cooldownBody}>
-            For your safety, money actions are disabled for 24 hours after signing in on a new device.
-            Browsing and chat work normally.
-          </Text>
+          <Text style={styles.cooldownTitle}>{i18n.t(lang, 'security.cooldown_title')}</Text>
+          <Text style={styles.cooldownBody}>{i18n.t(lang, 'security.cooldown_body')}</Text>
         </View>
       ) : null}
 
@@ -136,9 +134,9 @@ export function HomeScreen() {
         {error ? (
           <Text style={[styles.muted, { color: motion.color.danger }]}>{error}</Text>
         ) : jobs === null ? (
-          <ActivityIndicator />
+          <SkeletonList rows={5} />
         ) : jobs.length === 0 ? (
-          <Text style={styles.muted}>{i18n.t('ps', 'empty.no_jobs')}</Text>
+          <Text style={styles.muted}>{i18n.t(lang, 'empty.no_jobs')}</Text>
         ) : (
           jobs.map((j) => (
             <JobCard key={j.id} job={j} onPress={() => setOpenJobId(j.id)} />

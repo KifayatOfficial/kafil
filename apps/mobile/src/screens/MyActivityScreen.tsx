@@ -4,19 +4,13 @@
 // Tabbed if the user holds both roles.
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion } from '@kafil/core';
+import { i18n, motion, type Lang } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
-import { usePressScale } from '../motion/animations';
+import { usePressScale, useStateFlash } from '../motion/animations';
 import { haptic } from '../motion/feedback';
+import { SkeletonList } from '../components/Skeleton';
 import { MyJobApplicantsScreen } from './MyJobApplicantsScreen';
 
 interface Application {
@@ -45,7 +39,7 @@ interface Props {
 type Tab = 'worker' | 'employer';
 
 export function MyActivityScreen({ onBack }: Props) {
-  const { api } = useAuth();
+  const { api, lang } = useAuth();
   const [roles, setRoles] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>('worker');
   const [appsLoading, setAppsLoading] = useState(false);
@@ -103,33 +97,33 @@ export function MyActivityScreen({ onBack }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={16}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
+        <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
+          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
-        <Text style={styles.h1}>My activity</Text>
+        <Text style={styles.h1}>{i18n.t(lang, 'activity.title')}</Text>
         <View style={{ width: 60 }} />
       </View>
 
       {showTabs ? (
         <View style={styles.tabs}>
-          <TabButton label="Applications" active={tab === 'worker'} onPress={() => setTab('worker')} />
-          <TabButton label="My jobs" active={tab === 'employer'} onPress={() => setTab('employer')} />
+          <TabButton label={i18n.t(lang, 'activity.applications')} active={tab === 'worker'} onPress={() => setTab('worker')} />
+          <TabButton label={i18n.t(lang, 'activity.my_jobs')} active={tab === 'employer'} onPress={() => setTab('employer')} />
         </View>
       ) : null}
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {tab === 'worker' ? (
           appsLoading ? (
-            <ActivityIndicator />
+            <SkeletonList rows={3} />
           ) : apps.length === 0 ? (
-            <Text style={styles.muted}>You haven't applied to anything yet.</Text>
+            <Text style={styles.muted}>{i18n.t(lang, 'activity.no_applications')}</Text>
           ) : (
-            apps.map((a) => <ApplicationCard key={a.id} app={a} />)
+            apps.map((a) => <ApplicationCard key={a.id} app={a} lang={lang} />)
           )
         ) : jobsLoading ? (
-          <ActivityIndicator />
+          <SkeletonList rows={3} />
         ) : jobs.length === 0 ? (
-          <Text style={styles.muted}>You haven't posted any jobs yet.</Text>
+          <Text style={styles.muted}>{i18n.t(lang, 'activity.no_jobs')}</Text>
         ) : (
           jobs.map((j) => (
             <JobMineCard key={j.id} job={j} onPress={() => setOpenJobId(j.id)} />
@@ -149,20 +143,28 @@ function TabButton({
   active: boolean;
   onPress: () => void;
 }) {
+  // §27 class-B — flash on tap so a local tab switch feels reactive.
+  const { opacity, flash } = useStateFlash();
+  const anim = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Pressable
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       onPress={() => {
+        flash();
         void haptic(motion.hapticToken.TAP_LIGHT);
         onPress();
       }}
       style={[styles.tab, active && styles.tabActive]}
     >
-      <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+      <Animated.View style={anim}>
+        <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+      </Animated.View>
     </Pressable>
   );
 }
 
-function ApplicationCard({ app }: { app: Application }) {
+function ApplicationCard({ app, lang }: { app: Application; lang: Lang }) {
   const { scale, onPressIn, onPressOut } = usePressScale();
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const statusColor =
@@ -182,13 +184,19 @@ function ApplicationCard({ app }: { app: Application }) {
       <Animated.View style={[styles.card, animated]}>
         <Text style={styles.cardTitle}>{app.job.title}</Text>
         <Text style={styles.muted}>
-          {app.job.ratePkr} PKR / {app.job.rateUnit} ·{' '}
-          <Text style={{ color: statusColor, fontWeight: '600' }}>{app.status}</Text>
+          {app.job.ratePkr} PKR / {app.job.rateUnit}
         </Text>
+        {/* §25.2 — status as dot + label, never colour alone. */}
+        <View style={styles.statusBadge}>
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.statusText, { color: statusColor }]}>{app.status}</Text>
+        </View>
       </Animated.View>
     </Pressable>
   );
 }
+
+void (null as unknown as Lang);
 
 function JobMineCard({ job, onPress }: { job: JobMine; onPress: () => void }) {
   const { scale, onPressIn, onPressOut } = usePressScale();
@@ -251,4 +259,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, fontWeight: '600', color: motion.color.text, marginBottom: 4 },
   muted: { color: '#888', fontSize: 13, marginTop: 2 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '600' },
 });

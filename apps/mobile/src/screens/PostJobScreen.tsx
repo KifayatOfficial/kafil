@@ -23,7 +23,7 @@ import {
   View,
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion, randomUUID } from '@kafil/core';
+import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
@@ -66,7 +66,7 @@ const FALLBACK_ICON: Record<string, string> = {
 };
 
 export function PostJobScreen({ onClose, onPosted }: Props) {
-  const { api } = useAuth();
+  const { api, lang } = useAuth();
   const [phase, setPhase] = useState<Phase>('editing');
   const [error, setError] = useState<string | null>(null);
 
@@ -150,9 +150,9 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
   if (phase === 'posted') {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.D_REWARD} style={{ width: 180, height: 180 }} loop />
-        <Text style={styles.successTitle}>Job posted!</Text>
-        <Text style={styles.muted}>Workers in your area can apply now.</Text>
+        <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.D_REWARD} style={{ width: 180, height: 180 }} loop={false} />
+        <Text style={styles.successTitle}>{i18n.t(lang, 'job.posted')}</Text>
+        <Text style={styles.muted}>{i18n.t(lang, 'job.live_immediately')}</Text>
       </View>
     );
   }
@@ -163,13 +163,13 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
       style={{ flex: 1 }}
     >
       <View style={styles.root}>
-        <Pressable onPress={onClose} hitSlop={16} style={styles.back}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Cancel</Text>
+        <Pressable onPress={onClose} hitSlop={16} style={styles.back} accessibilityLabel={i18n.t(lang, 'common.cancel')}>
+          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.cancel')}</Text>
         </Pressable>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-          <Text style={styles.title}>Post a job</Text>
-          <Text style={styles.muted}>Describe what you need. Be specific.</Text>
+          <Text style={styles.title}>{i18n.t(lang, 'job.post_title')}</Text>
+          <Text style={styles.muted}>{i18n.t(lang, 'job.post_subtitle')}</Text>
 
           <Text style={styles.label}>Title</Text>
           <TextInput
@@ -273,7 +273,7 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
           </Pressable>
 
           <Text style={[styles.muted, { textAlign: 'center', marginTop: 12 }]}>
-            Your job will go live immediately.
+            {i18n.t(lang, 'job.live_immediately')}
           </Text>
         </ScrollView>
       </View>

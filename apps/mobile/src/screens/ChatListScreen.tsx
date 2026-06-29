@@ -1,19 +1,13 @@
 // Conversations list. Each conversation has the most-recent message preview embedded.
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion } from '@kafil/core';
+import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { ChatScreen } from './ChatScreen';
+import { SkeletonList } from '../components/Skeleton';
 
 interface Conversation {
   id: string;
@@ -28,7 +22,7 @@ interface Props {
 }
 
 export function ChatListScreen({ onBack }: Props) {
-  const { api, session } = useAuth();
+  const { api, session, lang } = useAuth();
   const me = session?.userId ?? '';
   const [items, setItems] = useState<Conversation[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -61,21 +55,18 @@ export function ChatListScreen({ onBack }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={16}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
+        <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
+          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
-        <Text style={styles.h1}>Messages</Text>
+        <Text style={styles.h1}>{i18n.t(lang, 'nav.messages')}</Text>
         <View style={{ width: 60 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {items === null ? (
-          <ActivityIndicator />
+          <SkeletonList rows={4} />
         ) : items.length === 0 ? (
-          <Text style={styles.muted}>
-            No conversations yet. After an employer accepts your application — or you accept
-            a worker's — a chat opens automatically.
-          </Text>
+          <Text style={styles.muted}>{i18n.t(lang, 'chat.empty')}</Text>
         ) : (
           items.map((c) => {
             const other = c.participants.find((p) => p.userId !== me);

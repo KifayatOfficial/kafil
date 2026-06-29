@@ -47,7 +47,7 @@ interface Props {
 const POLL_MS = 4_000;
 
 export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
-  const { api, session } = useAuth();
+  const { api, session, lang } = useAuth();
   const me = session?.userId ?? '';
 
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -118,12 +118,12 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
     >
       <View style={styles.root}>
         <View style={styles.header}>
-          <Pressable onPress={onBack} hitSlop={16}>
-            <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
+          <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
+            <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
           </Pressable>
-          <Text style={styles.h1}>Chat</Text>
+          <Text style={styles.h1}>{i18n.t(lang, 'nav.chat')}</Text>
           {otherUserId ? (
-            <Pressable onPress={() => setReportOpen(true)} hitSlop={16} accessibilityLabel="Report or block">
+            <Pressable onPress={() => setReportOpen(true)} hitSlop={16} accessibilityLabel={i18n.t(lang, 'safety.report')}>
               <Text style={{ color: motion.color.danger, fontSize: 22, width: 60, textAlign: 'right' }}>⚑</Text>
             </Pressable>
           ) : (
@@ -142,7 +142,7 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
 
         {blocked ? (
           <View style={styles.blockedNotice}>
-            <Text style={styles.blockedNoticeText}>{i18n.t('ps', 'safety.blocked_notice')}</Text>
+            <Text style={styles.blockedNoticeText}>{i18n.t(lang, 'safety.blocked_notice')}</Text>
           </View>
         ) : null}
 
@@ -153,7 +153,7 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
           {messages.length === 0 ? (
-            <Text style={styles.muted}>Say salaam to get started.</Text>
+            <Text style={styles.muted}>{i18n.t(lang, 'chat.welcome')}</Text>
           ) : (
             messages.map((m) => <Bubble key={m.id} msg={m} isMe={m.senderId === me} />)
           )}
@@ -165,7 +165,7 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Type a message"
+            placeholder={i18n.t(lang, 'common.message_placeholder')}
             style={styles.input}
             multiline
             maxLength={4000}
@@ -179,6 +179,7 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
             }}
             onPressOut={onPressOut}
             disabled={!draft.trim() || sending || blocked}
+            accessibilityLabel={i18n.t(lang, 'common.send')}
           >
             <Animated.View
               style={[
@@ -190,7 +191,7 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
               {sending ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.sendBtnText}>Send</Text>
+                <Text style={styles.sendBtnText}>{i18n.t(lang, 'common.send')}</Text>
               )}
             </Animated.View>
           </Pressable>
@@ -294,8 +295,10 @@ const styles = StyleSheet.create({
   },
   sendBtn: {
     backgroundColor: motion.color.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    minHeight: 48,
+    justifyContent: 'center',
     borderRadius: motion.radius.pill,
   },
   sendBtnDisabled: { backgroundColor: '#bbb' },

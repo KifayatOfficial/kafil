@@ -10,11 +10,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { I18nManager } from 'react-native';
 import Constants from 'expo-constants';
 import {
   KafilApiClient,
   KafilAuth,
   randomUUID,
+  type Lang,
 } from '@kafil/core';
 import {
   clearSession,
@@ -27,6 +29,8 @@ import {
 export interface AuthState {
   status: 'loading' | 'signedOut' | 'signedIn';
   session: PersistedSession | null;
+  /** UI language (§12). Sourced from the user's preferred_lang; defaults to Pashto. */
+  lang: Lang;
   /** True when the active session is in §24/A1 cooldown (no money actions). */
   inCooldown: boolean;
   /** Trigger sign-in flow components; throws on validation. */
@@ -51,6 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthState['status']>('loading');
   const [session, setSession] = useState<PersistedSession | null>(null);
   const [fingerprint, setFingerprint] = useState<string>('');
+  // Default Pashto (the primary low-literacy user base, §12). Both Pashto and Urdu are
+  // RTL, so we enable RTL at startup; English users are the exception, flipped on /me.
+  const [lang, setLang] = useState<Lang>('ps');
 
   // Build one client; getAccessToken closes over `session` state so token rotation works.
   const sessionRef = useStableRef(session);
@@ -106,6 +113,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // §12 — sync UI language from the signed-in user's preference, and align native RTL.
+  // I18nManager.forceRTL only takes full effect after a reload, but calling it keeps the
+  // layout direction correct on next launch and lets logical (start/end) styles resolve.
+  useEffect(() => {
+    if (status !== 'signedIn') return;
+    let cancelled = false;
+    (async () => {
+      const r = await api.get<{ ok: true; user: { preferredLang?: string } }>('/api/auth/me');
+      if (cancelled || !r.success) return;
+      const pl = (r.data as { user?: { preferredLang?: string } }).user?.preferredLang;
+      const next: Lang = pl === 'ur' ? 'ur' : pl === 'en' ? 'en' : 'ps';
+      setLang(next);
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [status, api]);
+
+  useEffect(() => {
+    const rtl = lang === 'ps' || lang === 'ur';
+    try {
+      I18nManager.allowRTL(rtl);
+      if (I18nManager.isRTL !== rtl) I18nManager.forceRTL(rtl);
+    } catch {
+      // I18nManager unavailable in some test/web contexts — non-fatal.
+    }
+  }, [lang]);
+
   const requestOtp = useCallback(
     async (phone: string) => {
       const r = await auth.requestOtp({ phone_e164: phone, device_fingerprint: fingerprint });
@@ -153,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     status,
     session,
+    lang,
     inCooldown,
     requestOtp,
     verifyOtp,

@@ -24,6 +24,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { SkeletonList } from '../components/Skeleton';
 import { ReportSheet } from '../components/ReportSheet';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
@@ -50,7 +51,7 @@ interface Props {
 type Phase = 'loading' | 'ready' | 'applying' | 'applied' | 'stale' | 'error';
 
 export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
-  const { api } = useAuth();
+  const { api, lang } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -120,14 +121,14 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
       style={{ flex: 1 }}
     >
       <View style={styles.root}>
-        <Pressable onPress={onClose} hitSlop={16} style={styles.back}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
+        <Pressable onPress={onClose} hitSlop={16} style={styles.back} accessibilityLabel={i18n.t(lang, 'common.back')}>
+          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
 
         {phase === 'loading' ? (
-          <ActivityIndicator color={motion.color.primary} style={{ marginTop: 80 }} />
+          <View style={{ marginTop: 40 }}><SkeletonList rows={3} /></View>
         ) : phase === 'applied' ? (
-          <SuccessView job={job!} />
+          <SuccessView job={job!} lang={lang} />
         ) : phase === 'stale' ? (
           <StaleView jobTitle={job?.title ?? ''} onBack={onClose} />
         ) : (
@@ -169,7 +170,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
             <Text style={styles.safetyNote}>
               KAFIL never asks workers to pay to apply. If anyone requests a fee,{' '}
               <Text style={styles.reportLink} onPress={() => setReportOpen(true)}>
-                {i18n.t('ps', 'safety.report_job')}
+                {i18n.t(lang, 'safety.report_job')}
               </Text>
               .
             </Text>
@@ -195,7 +196,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
                 {phase === 'applying' ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text style={styles.ctaText}>{i18n.t('ps', 'job.apply')}</Text>
+                  <Text style={styles.ctaText}>{i18n.t(lang, 'job.apply')}</Text>
                 )}
               </Animated.View>
             </Pressable>
@@ -228,14 +229,13 @@ function MetaPill({ label }: { label: string }) {
   );
 }
 
-function SuccessView({ job }: { job: Job }) {
+function SuccessView({ job, lang }: { job: Job; lang: import('@kafil/core').Lang }) {
+  // §27 class-D reward — plays ONCE (loop:false), not the looping idle mascot.
   return (
     <View style={styles.successWrap}>
-      <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.D_REWARD} style={{ width: 180, height: 180 }} loop />
-      <Text style={styles.successTitle}>Applied!</Text>
-      <Text style={styles.muted}>
-        Your application for "{job.title}" was sent. We'll let you know when the employer responds.
-      </Text>
+      <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.D_REWARD} style={{ width: 180, height: 180 }} loop={false} />
+      <Text style={styles.successTitle}>{i18n.t(lang, 'job.applied')}</Text>
+      <Text style={styles.muted}>"{job.title}"</Text>
     </View>
   );
 }

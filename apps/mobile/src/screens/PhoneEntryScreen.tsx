@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function PhoneEntryScreen({ onOtpSent }: Props) {
-  const { requestOtp } = useAuth();
+  const { requestOtp, lang } = useAuth();
   const [raw, setRaw] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export function PhoneEntryScreen({ onOtpSent }: Props) {
     <View style={styles.root}>
       <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.E_MASCOT} style={styles.mascot} loop />
 
-      <Text style={styles.title}>{i18n.t('ps', 'onboarding.welcome')}</Text>
+      <Text style={styles.title}>{i18n.t(lang, 'onboarding.welcome')}</Text>
       <Text style={styles.subtitle}>+92 — Pakistan</Text>
 
       <View style={styles.phoneRow}>
@@ -92,14 +92,12 @@ export function PhoneEntryScreen({ onOtpSent }: Props) {
           {busy ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text style={styles.ctaText}>{i18n.t('ps', 'common.continue')}</Text>
+            <Text style={styles.ctaText}>{i18n.t(lang, 'common.continue')}</Text>
           )}
         </Animated.View>
       </Pressable>
 
-      <Text style={styles.help}>
-        We will send a 6-digit code to your phone. Standard SMS rates may apply.
-      </Text>
+      <Text style={styles.help}>{i18n.t(lang, 'onboarding.sms_notice')}</Text>
     </View>
   );
 }
@@ -129,7 +127,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: motion.spacing.lg,
     width: '100%',
   },
-  cc: { fontSize: 18, color: motion.color.text, marginRight: motion.spacing.sm },
+  cc: { fontSize: 18, color: motion.color.text, marginEnd: motion.spacing.sm },
   input: { flex: 1, fontSize: 20, color: motion.color.text, paddingVertical: 14 },
   error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
   cta: {

@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { motion, randomUUID } from '@kafil/core';
+import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function RoleScreen({ onDone }: Props) {
-  const { api } = useAuth();
+  const { api, lang } = useAuth();
   const [busy, setBusy] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,12 +50,12 @@ export function RoleScreen({ onDone }: Props) {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>How will you use KAFIL?</Text>
-      <Text style={styles.subtitle}>You can do both — choose what fits today.</Text>
+      <Text style={styles.title}>{i18n.t(lang, 'onboarding.role_prompt')}</Text>
+      <Text style={styles.subtitle}>{i18n.t(lang, 'onboarding.role_subtitle')}</Text>
 
-      <Option label="I want to find work" sub="Workers (مزدور / کارګر)" choice="worker" busy={busy === 'worker'} onPress={submit} />
-      <Option label="I want to hire workers" sub="Employer / Contractor" choice="employer" busy={busy === 'employer'} onPress={submit} />
-      <Option label="Both" sub="Hire and work" choice="both" busy={busy === 'both'} onPress={submit} />
+      <Option label={i18n.t(lang, 'onboarding.role_worker')} sub="مزدور / کارګر" choice="worker" busy={busy === 'worker'} onPress={submit} />
+      <Option label={i18n.t(lang, 'onboarding.role_employer')} sub="کارفرما" choice="employer" busy={busy === 'employer'} onPress={submit} />
+      <Option label={i18n.t(lang, 'common.continue')} sub="دواړه" choice="both" busy={busy === 'both'} onPress={submit} />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
   },
   optionLabel: { fontSize: 17, fontWeight: '600', color: motion.color.text },
   optionSub: { color: '#888', marginTop: 4 },
-  arrow: { fontSize: 24, color: motion.color.primary, marginLeft: 12 },
+  arrow: { fontSize: 24, color: motion.color.primary, marginStart: 12 },
   error: { color: motion.color.danger, marginTop: 16, textAlign: 'center' },
 });

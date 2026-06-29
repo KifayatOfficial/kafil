@@ -24,7 +24,7 @@ interface Props {
 }
 
 export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
-  const { verifyOtp } = useAuth();
+  const { verifyOtp, lang } = useAuth();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,11 +65,11 @@ export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
 
   return (
     <View style={styles.root}>
-      <Pressable onPress={onBack} hitSlop={16} style={styles.back}>
+      <Pressable onPress={onBack} hitSlop={16} style={styles.back} accessibilityLabel={i18n.t(lang, 'common.back')}>
         <Text style={{ color: motion.color.primary, fontSize: 18 }}>←</Text>
       </Pressable>
 
-      <Text style={styles.title}>Enter the 6-digit code</Text>
+      <Text style={styles.title}>{i18n.t(lang, 'onboarding.otp_title')}</Text>
       <Text style={styles.subtitle}>{phoneE164}</Text>
 
       {/* Six boxes that visually mirror the 6-digit code. The single TextInput
@@ -109,7 +109,7 @@ export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
         <Animated.View
           style={[styles.cta, (code.length !== 6 || busy) && styles.ctaDisabled, animated]}
         >
-          <Text style={styles.ctaText}>{i18n.t('ps', 'common.continue')}</Text>
+          <Text style={styles.ctaText}>{i18n.t(lang, 'common.continue')}</Text>
         </Animated.View>
       </Pressable>
     </View>
