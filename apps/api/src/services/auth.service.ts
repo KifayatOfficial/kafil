@@ -85,6 +85,21 @@ export const authService = {
 
     otpStore.delete(phone_e164);
 
+    // §9 — a banned or suspended account can't obtain a session. We surface this as
+    // FORBIDDEN before doing any work (returning users only; new signups are 'active').
+    const priorUser = await prisma.user.findUnique({
+      where: { phoneE164: phone_e164 },
+      select: { status: true, statusReason: true },
+    });
+    if (priorUser && (priorUser.status === 'banned' || priorUser.status === 'suspended')) {
+      return err(
+        'FORBIDDEN',
+        priorUser.status === 'banned'
+          ? `Account banned${priorUser.statusReason ? `: ${priorUser.statusReason}` : ''}. Contact support to appeal.`
+          : `Account suspended${priorUser.statusReason ? `: ${priorUser.statusReason}` : ''}.`,
+      );
+    }
+
     // Atomic: upsert user, register device, create session, log account_history.
     const result = await prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { phoneE164: phone_e164 } });

@@ -17,6 +17,7 @@ import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { conversationRepository } from '../repositories/conversation.repository';
 import { redact } from './pii-redactor';
+import { safetyService } from './safety.service';
 
 async function assertParticipant(conversationId: string, userId: string) {
   const conv = await conversationRepository.findById(conversationId);
@@ -60,6 +61,12 @@ export const chatService = {
     const conv = await assertParticipant(args.conversationId, args.senderId);
     if (conv === null) return err('NOT_FOUND', 'conversation not found');
     if (conv === false) return err('FORBIDDEN', 'not a participant');
+
+    // §25.9 / F11 — if either party has blocked the other, the channel is closed.
+    const other = conv.participants.find((p) => p.userId !== args.senderId);
+    if (other && (await safetyService.isBlockedBetween(args.senderId, other.userId))) {
+      return err('FORBIDDEN', 'messaging is blocked between you and this user');
+    }
 
     const raw = parse.data.body;
     const { redacted, flagged, hits } = redact(raw);

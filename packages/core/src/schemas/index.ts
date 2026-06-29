@@ -9,3 +9,4 @@ export * from './application';
 export * from './assignment';
 export * from './review';
 export * from './message';
+export * from './safety';

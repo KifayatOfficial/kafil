@@ -6,6 +6,7 @@ import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { jobRepository } from '../repositories/job.repository';
+import { redact } from './pii-redactor';
 
 export const jobService = {
   async createJob(args: {
@@ -16,6 +17,16 @@ export const jobService = {
     if (!parse.success) return err('VALIDATION', 'invalid input', parse.error.flatten());
 
     const i = parse.data;
+
+    // §10/F1 — workers never pay to apply. Scan the posting's title + description for
+    // fee/deposit/advance language (the same detector the chat channel uses, §5). A hit
+    // doesn't block the post — it raises a fraud signal so repeat fee-askers surface in
+    // the ops queue and cross the auto-review threshold. Phones/contact in the body are
+    // also disintermediation signals (F2).
+    const scanText = `${i.title}\n${i.description ?? ''}`;
+    const scan = redact(scanText);
+    const feeHit = scan.hits.some((h) => h.kind === 'fee_pattern');
+    const contactHit = scan.hits.some((h) => h.kind === 'phone' || h.kind === 'social' || h.kind === 'url');
 
     const jobId = await prisma.$transaction(async (tx) => {
       const job = await jobRepository.create(tx, {
@@ -44,12 +55,26 @@ export const jobService = {
 
       await jobRepository.attachSpecialties(tx, job.id, i.specialty_ids);
 
+      // §10/F1+F2 — record a weighted fraud signal when the posting smells like an
+      // advance-fee scam or an off-platform contact dump. Fee asks are the ceiling.
+      if (feeHit || contactHit) {
+        await tx.fraudSignal.create({
+          data: {
+            userId: args.employerId,
+            signal: feeHit ? 'fee_request_in_job' : 'contact_in_job',
+            weight: feeHit ? 80 : 40,
+            refType: 'job',
+            refId: job.id,
+          },
+        });
+      }
+
       await emitEvent(tx, {
         eventType: 'job.posted',
         actorId: args.employerId,
         refType: 'job',
         refId: job.id,
-        payload: { headcount: i.headcount, rate_pkr: i.rate_pkr },
+        payload: { headcount: i.headcount, rate_pkr: i.rate_pkr, feeHit, contactHit },
       });
 
       return job.id;
