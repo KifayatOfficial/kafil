@@ -38,10 +38,10 @@ async function runOnce(): Promise<void> {
   inFlight = true;
   try {
     const stats = await schedulerService.tickOnce();
-    if (stats.expiredAssigned > 0 || stats.routedToOpsReview > 0) {
+    if (stats.expiredAssigned > 0 || stats.routedToOpsReview > 0 || stats.payoutsReversed > 0) {
       // eslint-disable-next-line no-console
       console.log(
-        `[scheduler] tick: expired=${stats.expiredAssigned} ops_review=${stats.routedToOpsReview}`,
+        `[scheduler] tick: expired=${stats.expiredAssigned} ops_review=${stats.routedToOpsReview} payouts_reversed=${stats.payoutsReversed}`,
       );
     }
   } catch (e) {

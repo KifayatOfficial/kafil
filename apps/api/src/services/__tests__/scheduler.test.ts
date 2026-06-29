@@ -244,3 +244,39 @@ describe('scheduler — §26/M1 silence handling', () => {
     expect(second.routedToOpsReview).toBe(0);
   });
 });
+
+describe('scheduler — reverses stranded failed payouts (§6)', () => {
+  it('a tick reverses a payout stuck in failed and makes the worker whole', async () => {
+    const worker = await makeUser({ role: 'worker', kyc: 2 });
+    // Seed the worker wallet, then simulate a crashed payout: ledger debited, row 'failed'.
+    const { ensureWallet, writeLedgerTxn, payOut } = await import('../ledger');
+    await prisma.$transaction(async (tx) => {
+      const w = await ensureWallet(tx, { userId: worker.id, kind: 'user' });
+      const gw = await ensureWallet(tx, { userId: null, kind: 'payment_gateway_clearing' });
+      await writeLedgerTxn(tx, {
+        legs: [
+          { walletId: gw.id, amountMinor: -500_000n, reason: 'escrow_release', refType: 'assignment', refId: w.id },
+          { walletId: w.id, amountMinor: 500_000n, reason: 'escrow_release', refType: 'assignment', refId: w.id },
+        ],
+      });
+    });
+    const payout = await prisma.$transaction(async (tx) => {
+      const p = await tx.payout.create({
+        data: { workerId: worker.id, amountMinor: 200_000n, provider: 'console', status: 'failed', idempotencyKey: newKey() },
+      });
+      await payOut(tx, { workerId: worker.id, amountMinor: 200_000n, refType: 'payout', refId: p.id });
+      return p;
+    });
+
+    const stats = await schedulerService.tickOnce();
+    expect(stats.payoutsReversed).toBeGreaterThanOrEqual(1);
+
+    const wallet = await prisma.wallet.findFirstOrThrow({ where: { userId: worker.id, kind: 'user' } });
+    expect(wallet.balanceMinor).toBe(500_000n); // 300k after debit, back to 500k after reversal
+    expect((await prisma.payout.findUniqueOrThrow({ where: { id: payout.id } })).status).toBe('reversed');
+
+    // Idempotent — a second tick reverses nothing more.
+    const second = await schedulerService.tickOnce();
+    expect(second.payoutsReversed).toBe(0);
+  });
+});

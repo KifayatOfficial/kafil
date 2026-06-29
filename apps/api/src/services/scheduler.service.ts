@@ -23,6 +23,7 @@
 import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { notificationsService } from './notifications.service';
+import { payoutService } from './payout.service';
 
 const ASSIGN_CONFIRM_TIMEOUT_MS_DEFAULT = 24 * 60 * 60_000; // 24h
 const MARKDONE_SILENCE_TIMEOUT_MS_DEFAULT = 48 * 60 * 60_000; // 48h
@@ -30,6 +31,7 @@ const MARKDONE_SILENCE_TIMEOUT_MS_DEFAULT = 48 * 60 * 60_000; // 48h
 export interface TickStats {
   expiredAssigned: number;
   routedToOpsReview: number;
+  payoutsReversed: number;
 }
 
 // Advisory lock helper: keyed on a string label + uuid. Lock auto-releases at txn end.
@@ -72,7 +74,7 @@ async function loadTimeout(key: string, fallbackMs: number): Promise<number> {
 
 export const schedulerService = {
   async tickOnce(now: Date = new Date()): Promise<TickStats> {
-    const stats: TickStats = { expiredAssigned: 0, routedToOpsReview: 0 };
+    const stats: TickStats = { expiredAssigned: 0, routedToOpsReview: 0, payoutsReversed: 0 };
 
     const confirmTimeout = await loadTimeout('scheduler.confirm_timeout_ms', ASSIGN_CONFIRM_TIMEOUT_MS_DEFAULT);
     const silenceTimeout = await loadTimeout('scheduler.markdone_silence_timeout_ms', MARKDONE_SILENCE_TIMEOUT_MS_DEFAULT);
@@ -283,6 +285,14 @@ export const schedulerService = {
         }
       }
     }
+
+    // ── 3) reverse stranded failed payouts (§6) ───────────────────────────
+    // A payout whose provider call failed after the ledger committed leaves money in
+    // gateway_clearing. requestPayout reverses inline, but a crash between the failure
+    // and the reversal can leave a payout stuck in 'failed'. This sweep makes the
+    // worker whole; it's idempotent (a payout with an existing reversal is skipped).
+    const sweep = await payoutService.reconcileFailedPayouts();
+    if (sweep.ok) stats.payoutsReversed = sweep.value.reversed.length;
 
     return stats;
   },
