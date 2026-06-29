@@ -33,6 +33,7 @@ export type LedgerReason =
   | 'escrow_release' // escrow_holding → worker wallet (net of commission)
   | 'commission' // escrow_holding → platform_revenue
   | 'refund' // escrow_holding → employer wallet (any reason)
+  | 'payout' // worker wallet → payment_gateway_clearing (cash-out to PSP)
   | 'tip' // employer wallet → worker wallet (no commission)
   | 'partial_payout' // escrow_holding → worker wallet (partial dispute outcome)
   | 'partial_refund' // escrow_holding → employer wallet (partial dispute outcome)
@@ -208,6 +209,27 @@ export async function refundEscrow(
     legs: [
       { walletId: escrow.id, amountMinor: -args.amountMinor, reason: 'refund', refType: args.refType, refId: args.refId },
       { walletId: employer.id, amountMinor: args.amountMinor, reason: 'refund', refType: args.refType, refId: args.refId },
+    ],
+  });
+}
+
+/**
+ * Worker cash-out. Money leaves the worker's wallet toward the PSP: debit the worker
+ * wallet, credit payment_gateway_clearing (the bookkeeping mirror of outbound funds
+ * the PSP will disburse). Balanced. The caller must have already checked the worker
+ * has sufficient balance under a row lock (see payout.service).
+ */
+export async function payOut(
+  tx: Prisma.TransactionClient,
+  args: { workerId: string; amountMinor: bigint; refType: string; refId: string },
+): Promise<{ txnId: string }> {
+  if (args.amountMinor <= 0n) throw new Error('payout amount must be positive');
+  const worker = await ensureWallet(tx, { userId: args.workerId, kind: 'user' });
+  const gw = await ensureWallet(tx, { userId: null, kind: 'payment_gateway_clearing' });
+  return writeLedgerTxn(tx, {
+    legs: [
+      { walletId: worker.id, amountMinor: -args.amountMinor, reason: 'payout', refType: args.refType, refId: args.refId },
+      { walletId: gw.id, amountMinor: args.amountMinor, reason: 'payout', refType: args.refType, refId: args.refId },
     ],
   });
 }
