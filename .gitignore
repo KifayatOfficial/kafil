@@ -1,0 +1,55 @@
+# deps
+node_modules/
+.pnp.*
+.yarn/
+.npm/
+
+# build outputs
+dist/
+build/
+.next/
+out/
+.expo/
+.expo-shared/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs / runtime
+*.log
+npm-debug.log*
+.DS_Store
+coverage/
+.nyc_output/
+
+# editors
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# native
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/build/
+*.keystore
+!debug.keystore
+google-services.json
+GoogleService-Info.plist
+
+# expo / EAS
+.eas/
+
+# prisma / db
+*.db
+*.db-journal
+prisma/migrations/dev.db*
+
+# misc
+tmp/
+.tmp/

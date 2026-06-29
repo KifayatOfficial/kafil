@@ -1,0 +1,23 @@
+# Local dev infra. Prod stays cloud-hosted; this is just for local fidelity (§22).
+# PostGIS-enabled because §2.2 locations use spatial indexes.
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: kafil-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kafil
+      POSTGRES_PASSWORD: kafil_local
+      POSTGRES_DB: kafil
+    ports:
+      - '5433:5432' # 5433 to avoid clashing with any host postgres
+    volumes:
+      - kafil_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kafil -d kafil']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kafil_pg_data:

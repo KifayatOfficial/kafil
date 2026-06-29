@@ -1,0 +1,934 @@
+// KAFIL — canonical data model (§2 + §2.13).
+// Single source of truth for the schema, generated from the v1.1 addendum.
+// Annotations cite the spec section that requires each table/field.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.1 + §3 — single identity, many roles
+// ─────────────────────────────────────────────────────────────
+model User {
+  id                String    @id @default(uuid()) @db.Uuid
+  phoneE164         String    @unique @map("phone_e164") @db.VarChar(20)
+  phoneVerifiedAt   DateTime? @map("phone_verified_at") @db.Timestamptz
+  displayName       String    @map("display_name") @db.VarChar(120)
+  photoUrl          String?   @map("photo_url")
+  preferredLang     String    @default("ps") @map("preferred_lang") @db.VarChar(8)
+  status            String    @default("active") @db.VarChar(20)
+  statusReason      String?   @map("status_reason")
+  cnicHash          String?   @map("cnic_hash") @db.VarChar(128)
+  kycLevel          Int       @default(0) @map("kyc_level") @db.SmallInt
+  trustScore        Int       @default(0) @map("trust_score")
+  // §28.C — primary recovery path (voice + trusted contacts); phrase is secondary.
+  voicePassphraseUrl String?  @map("voice_passphrase_url")
+  // §26/M34 — child-labour compliance gate.
+  dob               DateTime? @db.Date
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  version           Int       @default(0)
+
+  roles             UserRole[]
+  workerProfile     WorkerProfile?
+  employerProfile   EmployerProfile?
+  workerSpecialties WorkerSpecialty[]
+  jobsPosted        Job[]                @relation("EmployerJobs")
+  applications      Application[]
+  assignments       Assignment[]
+  reviewsAuthored   Review[]             @relation("AuthorReviews")
+  reviewsReceived   Review[]             @relation("SubjectReviews")
+  sessions          Session[]
+  accountHistory    AccountHistory[]
+  recoveryContacts  RecoveryContact[]    @relation("UserRecoveryOwner")
+  recoveryFor       RecoveryContact[]    @relation("UserRecoveryContact")
+  blocksMade        UserBlock[]          @relation("Blocker")
+  blocksAgainst     UserBlock[]          @relation("Blocked")
+  conversations     ConversationParticipant[]
+  messages          Message[]
+  shops             Shop[]
+  crewsLed          Crew[]
+  crewMemberships   CrewMember[]
+  groupOrders       GroupOrder[]
+  invoices          Invoice[]
+  reports           Report[]             @relation("Reporter")
+  moderationActions ModerationAction[]   @relation("Moderator")
+  fraudSignals     FraudSignal[]
+  notifications    Notification[]
+  notificationPrefs NotificationPref?
+  referralsMade    Referral[]           @relation("Referrer")
+  referralOf       Referral[]           @relation("Referred")
+  devices          Device[]
+  workLogEntries   WorkLog[]            @relation("LogAuthor")
+  workLogConfirms  WorkLog[]            @relation("LogConfirmer")
+
+  @@map("users")
+}
+
+model UserRole {
+  userId   String @map("user_id") @db.Uuid
+  role     String @db.VarChar(20)
+  grantedAt DateTime @default(now()) @map("granted_at") @db.Timestamptz
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@id([userId, role])
+  @@map("user_roles")
+}
+
+model WorkerProfile {
+  userId           String   @id @map("user_id") @db.Uuid
+  bio              String?
+  experienceYears  Int?     @map("experience_years") @db.SmallInt
+  rateMinPkr       Int?     @map("rate_min_pkr")
+  rateMaxPkr       Int?     @map("rate_max_pkr")
+  baseLocationId   String?  @map("base_location_id") @db.Uuid
+  ratingBayesian   Decimal? @default(0) @map("rating_bayesian") @db.Decimal(4, 3)
+  jobsCompleted    Int      @default(0) @map("jobs_completed")
+  noShowCount      Int      @default(0) @map("no_show_count")
+  cancelLateCount  Int      @default(0) @map("cancel_late_count")
+  completionRate   Decimal? @map("completion_rate") @db.Decimal(4, 3)
+  responseRate     Decimal? @map("response_rate") @db.Decimal(4, 3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User      @relation(fields: [userId], references: [id])
+  location Location? @relation(fields: [baseLocationId], references: [id])
+
+  @@map("worker_profiles")
+}
+
+model EmployerProfile {
+  userId             String   @id @map("user_id") @db.Uuid
+  employerType       String?  @map("employer_type") @db.VarChar(30)
+  orgName            String?  @map("org_name") @db.VarChar(160)
+  baseLocationId     String?  @map("base_location_id") @db.Uuid
+  ratingBayesian     Decimal? @default(0) @map("rating_bayesian") @db.Decimal(4, 3)
+  jobsPosted         Int      @default(0) @map("jobs_posted")
+  paymentReliability Decimal? @map("payment_reliability") @db.Decimal(4, 3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User      @relation(fields: [userId], references: [id])
+  location Location? @relation(fields: [baseLocationId], references: [id])
+
+  @@map("employer_profiles")
+}
+
+model Specialty {
+  id      String  @id @default(uuid()) @db.Uuid
+  slug    String  @unique @db.VarChar(40)
+  namePs  String? @map("name_ps") @db.VarChar(80)
+  nameUr  String? @map("name_ur") @db.VarChar(80)
+  nameEn  String? @map("name_en") @db.VarChar(80)
+  icon    String? @db.VarChar(40)
+  active  Boolean @default(true)
+
+  workers    WorkerSpecialty[]
+  jobs       JobSpecialty[]
+
+  @@map("specialties")
+}
+
+model WorkerSpecialty {
+  userId      String @map("user_id") @db.Uuid
+  specialtyId String @map("specialty_id") @db.Uuid
+
+  user      User      @relation(fields: [userId], references: [id])
+  specialty Specialty @relation(fields: [specialtyId], references: [id])
+
+  @@id([userId, specialtyId])
+  @@map("worker_specialties")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.2 — landmark-based locations
+// ─────────────────────────────────────────────────────────────
+model Location {
+  id        String   @id @default(uuid()) @db.Uuid
+  label     String
+  district  String?  @db.VarChar(80)
+  tehsil    String?  @db.VarChar(80)
+  lat       Decimal  @db.Decimal(9, 6)
+  lng       Decimal  @db.Decimal(9, 6)
+  precision String   @default("pin") @db.VarChar(20)
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  jobs           Job[]
+  workerProfiles WorkerProfile[]
+  employerProfiles EmployerProfile[]
+  shops          Shop[]
+  groups         Group[]
+
+  @@map("locations")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.3 — jobs, slots, assignments
+// ─────────────────────────────────────────────────────────────
+model Job {
+  id                  String    @id @default(uuid()) @db.Uuid
+  employerId          String    @map("employer_id") @db.Uuid
+  title               String    @db.VarChar(200)
+  description         String?
+  descriptionAudioUrl String?   @map("description_audio_url")
+  locationId          String    @map("location_id") @db.Uuid
+  headcount           Int       @default(1) @db.SmallInt
+  ratePkr             Int       @map("rate_pkr")
+  rateUnit            String    @default("day") @map("rate_unit") @db.VarChar(10)
+  durationDays        Int?      @map("duration_days") @db.SmallInt
+  startDate           DateTime? @map("start_date") @db.Date
+  status              String    @default("draft") @db.VarChar(24)
+  expiresAt           DateTime? @map("expires_at") @db.Timestamptz
+  paymentMode         String    @default("cash") @map("payment_mode") @db.VarChar(16)
+  photos              Json      @default("[]")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  version             Int       @default(0)
+
+  employer    User           @relation("EmployerJobs", fields: [employerId], references: [id])
+  location    Location       @relation(fields: [locationId], references: [id])
+  specialties JobSpecialty[]
+  slots       JobSlot[]
+  applications Application[]
+  assignments Assignment[]
+
+  @@index([status, locationId])
+  @@index([employerId])
+  @@map("jobs")
+}
+
+model JobSpecialty {
+  jobId       String @map("job_id") @db.Uuid
+  specialtyId String @map("specialty_id") @db.Uuid
+
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  specialty Specialty @relation(fields: [specialtyId], references: [id])
+
+  @@id([jobId, specialtyId])
+  @@map("job_specialties")
+}
+
+model JobSlot {
+  id               String  @id @default(uuid()) @db.Uuid
+  jobId            String  @map("job_id") @db.Uuid
+  slotIndex        Int     @map("slot_index") @db.SmallInt
+  status           String  @default("open") @db.VarChar(20)
+  assignedWorkerId String? @map("assigned_worker_id") @db.Uuid
+  version          Int     @default(0)
+
+  job         Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@unique([jobId, slotIndex])
+  @@map("job_slots")
+}
+
+// §2.4 — applications with partial unique constraint (§24/A5 — re-apply after terminal status).
+model Application {
+  id              String    @id @default(uuid()) @db.Uuid
+  jobId           String    @map("job_id") @db.Uuid
+  workerId        String    @map("worker_id") @db.Uuid
+  status          String    @default("pending") @db.VarChar(20)
+  message         String?
+  proposedRatePkr Int?      @map("proposed_rate_pkr")
+  idempotencyKey  String?   @map("idempotency_key") @db.VarChar(80)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz
+
+  job    Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker User @relation(fields: [workerId], references: [id])
+
+  // §24/A5 — uniqueness only while application is in a NON-terminal state.
+  // The partial-index constraint is added in a follow-up SQL migration (Prisma's
+  // schema language can't express WHERE-clause unique indexes directly).
+  @@index([jobId, workerId])
+  @@map("applications")
+}
+
+model Assignment {
+  id                     String    @id @default(uuid()) @db.Uuid
+  jobId                  String    @map("job_id") @db.Uuid
+  slotId                 String    @map("slot_id") @db.Uuid
+  workerId               String    @map("worker_id") @db.Uuid
+  status                 String    @default("assigned") @db.VarChar(24)
+  agreedRatePkr          Int       @map("agreed_rate_pkr")
+  kycSnapshot            Json?     @map("kyc_snapshot")
+  startedAt              DateTime? @map("started_at") @db.Timestamptz
+  completedAt            DateTime? @map("completed_at") @db.Timestamptz
+  workerMarkedDoneAt     DateTime? @map("worker_marked_done_at") @db.Timestamptz
+  employerMarkedDoneAt   DateTime? @map("employer_marked_done_at") @db.Timestamptz
+  finalizedAt            DateTime? @map("finalized_at") @db.Timestamptz
+  matchSource            String?   @map("match_source") @db.VarChar(20) // §24/C8
+  version                Int       @default(0)
+
+  job      Job      @relation(fields: [jobId], references: [id])
+  slot     JobSlot  @relation(fields: [slotId], references: [id])
+  worker   User     @relation(fields: [workerId], references: [id])
+  workLog  WorkLog[]
+  reviews  Review[]
+  disputes Dispute[]
+
+  // §24/A3 — only ONE active assignment per slot; terminal states must NOT block re-fill.
+  // Implemented as a partial unique index in a follow-up SQL migration.
+  @@index([slotId])
+  @@map("assignments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.13 — work_log: per-day timekeeping for multi-day jobs (§24/B2)
+// ─────────────────────────────────────────────────────────────
+model WorkLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  day          DateTime @db.Date
+  hours        Decimal? @db.Decimal(4, 2)
+  markedBy     String   @map("marked_by") @db.Uuid
+  confirmedBy  String?  @map("confirmed_by") @db.Uuid
+  state        String   @default("pending") @db.VarChar(12)
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  author     User       @relation("LogAuthor", fields: [markedBy], references: [id])
+  confirmer  User?      @relation("LogConfirmer", fields: [confirmedBy], references: [id])
+
+  @@unique([assignmentId, day, markedBy])
+  @@map("work_log")
+}
+
+// §2.5 + §7 — double-blind reviews
+model Review {
+  id            String    @id @default(uuid()) @db.Uuid
+  assignmentId  String    @map("assignment_id") @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  subjectId     String    @map("subject_id") @db.Uuid
+  direction     String    @db.VarChar(24)
+  rating        Int       @db.SmallInt
+  comment       String?
+  visibleAt     DateTime? @map("visible_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  author     User       @relation("AuthorReviews", fields: [authorId], references: [id])
+  subject    User       @relation("SubjectReviews", fields: [subjectId], references: [id])
+
+  @@unique([assignmentId, authorId])
+  @@map("reviews")
+}
+
+// §2.6 — availability calendar (derived primarily; §24/B6).
+model WorkerAvailability {
+  id       String   @id @default(uuid()) @db.Uuid
+  workerId String   @map("worker_id") @db.Uuid
+  day      DateTime @db.Date
+  state    String   @default("available") @db.VarChar(12)
+  source   String   @default("manual") @db.VarChar(16)
+
+  @@unique([workerId, day])
+  @@map("worker_availability")
+}
+
+// §2.7 — conversations + messages (anti-leakage chat; §5)
+model Conversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  jobId     String?  @map("job_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  conversationId String @map("conversation_id") @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@id([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  senderId       String   @map("sender_id") @db.Uuid
+  body           String?
+  bodyRedacted   String?  @map("body_redacted")
+  flagged        Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.8 — shops, groups, posts, comments
+// ─────────────────────────────────────────────────────────────
+model Shop {
+  id             String   @id @default(uuid()) @db.Uuid
+  ownerId        String   @map("owner_id") @db.Uuid
+  name           String   @db.VarChar(200)
+  description    String?
+  locationId     String?  @map("location_id") @db.Uuid
+  categories     Json     @default("[]")
+  photos         Json     @default("[]")
+  hours          Json?
+  ratingBayesian Decimal? @default(0) @map("rating_bayesian") @db.Decimal(4, 3)
+  verifiedTier   String   @default("free") @map("verified_tier") @db.VarChar(16)
+  status         String   @default("active") @db.VarChar(16)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  owner    User      @relation(fields: [ownerId], references: [id])
+  location Location? @relation(fields: [locationId], references: [id])
+  groupOrders GroupOrder[]
+
+  @@map("shops")
+}
+
+model Group {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(200)
+  category   String?  @db.VarChar(20)
+  locationId String?  @map("location_id") @db.Uuid
+  createdBy  String   @map("created_by") @db.Uuid
+  status     String   @default("active") @db.VarChar(16)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  location Location? @relation(fields: [locationId], references: [id])
+  posts    Post[]
+
+  @@map("groups")
+}
+
+model Post {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String?
+  images    Json     @default("[]")
+  pinned    Boolean  @default(false)
+  status    String   @default("visible") @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  comments Comment[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String?
+  status    String   @default("visible") @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.9 — money: wallets + double-entry ledger + payments + payouts
+// ─────────────────────────────────────────────────────────────
+model Wallet {
+  id           String @id @default(uuid()) @db.Uuid
+  userId       String? @map("user_id") @db.Uuid
+  kind         String @db.VarChar(24)
+  currency     String @default("PKR") @db.Char(3)
+  balanceMinor BigInt @default(0) @map("balance_minor")
+  version      Int    @default(0)
+
+  ledger LedgerEntry[]
+
+  @@unique([userId, kind])
+  @@map("wallets")
+}
+
+model LedgerEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  txnId       String   @map("txn_id") @db.Uuid
+  walletId    String   @map("wallet_id") @db.Uuid
+  amountMinor BigInt   @map("amount_minor")
+  reason      String   @db.VarChar(40)
+  refType     String?  @map("ref_type") @db.VarChar(24)
+  refId       String?  @map("ref_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([txnId])
+  @@index([refType, refId])
+  @@map("ledger_entries")
+}
+
+model Payment {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  amountMinor    BigInt   @map("amount_minor")
+  provider       String?  @db.VarChar(20)
+  providerRef    String?  @map("provider_ref") @db.VarChar(120)
+  status         String   @default("pending") @db.VarChar(20)
+  idempotencyKey String?  @unique @map("idempotency_key") @db.VarChar(80)
+  refType        String?  @map("ref_type") @db.VarChar(24)
+  refId          String?  @map("ref_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  chargebacks Chargeback[]
+
+  @@map("payments")
+}
+
+model Payout {
+  id             String   @id @default(uuid()) @db.Uuid
+  workerId       String   @map("worker_id") @db.Uuid
+  amountMinor    BigInt   @map("amount_minor")
+  provider       String?  @db.VarChar(20)
+  providerRef    String?  @map("provider_ref") @db.VarChar(120)
+  status         String   @default("pending") @db.VarChar(20)
+  idempotencyKey String?  @unique @map("idempotency_key") @db.VarChar(80)
+  refType        String?  @map("ref_type") @db.VarChar(24)
+  refId          String?  @map("ref_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("payouts")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.10 + §2.11 — disputes, reports, fraud signals, moderation
+// ─────────────────────────────────────────────────────────────
+model Dispute {
+  id              String    @id @default(uuid()) @db.Uuid
+  assignmentId    String    @map("assignment_id") @db.Uuid
+  openedBy        String    @map("opened_by") @db.Uuid
+  category        String    @db.VarChar(30)
+  status          String    @default("open") @db.VarChar(20)
+  assignedAgent   String?   @map("assigned_agent") @db.Uuid
+  resolution      String?   @db.VarChar(40)
+  resolutionNote  String?   @map("resolution_note")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz
+
+  assignment Assignment       @relation(fields: [assignmentId], references: [id])
+  evidence   DisputeEvidence[]
+
+  @@map("disputes")
+}
+
+model DisputeEvidence {
+  id         String   @id @default(uuid()) @db.Uuid
+  disputeId  String   @map("dispute_id") @db.Uuid
+  uploadedBy String   @map("uploaded_by") @db.Uuid
+  kind       String?  @db.VarChar(16)
+  url        String?
+  body       String?
+  messageId  String?  @map("message_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@map("dispute_evidence")
+}
+
+model Report {
+  id         String   @id @default(uuid()) @db.Uuid
+  reporterId String   @map("reporter_id") @db.Uuid
+  targetType String   @map("target_type") @db.VarChar(16)
+  targetId   String   @map("target_id") @db.Uuid
+  reason     String   @db.VarChar(30)
+  detail     String?
+  status     String   @default("open") @db.VarChar(16)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id])
+
+  @@map("reports")
+}
+
+model FraudSignal {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  signal    String   @db.VarChar(40)
+  weight    Int      @db.SmallInt
+  refType   String?  @map("ref_type") @db.VarChar(16)
+  refId     String?  @map("ref_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("fraud_signals")
+}
+
+model ModerationAction {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  targetType String?  @map("target_type") @db.VarChar(16)
+  targetId   String?  @map("target_id") @db.Uuid
+  action     String   @db.VarChar(24)
+  reason     String?
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  actor User? @relation("Moderator", fields: [actorId], references: [id])
+
+  @@map("moderation_actions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.12 — cross-cutting
+// ─────────────────────────────────────────────────────────────
+model Event {
+  id         BigInt   @id @default(autoincrement())
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz
+  actorId    String?  @map("actor_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(60)
+  refType    String?  @map("ref_type") @db.VarChar(24)
+  refId      String?  @map("ref_id") @db.Uuid
+  payload    Json?
+  deviceId   String?  @map("device_id") @db.Uuid
+  requestId  String?  @map("request_id") @db.Uuid
+
+  @@index([eventType, occurredAt])
+  @@index([refType, refId])
+  @@map("events")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String    @db.VarChar(40)
+  priority  String    @default("transactional") @db.VarChar(16) // §26/M13
+  title     String?
+  body      String?
+  refType   String?   @map("ref_type") @db.VarChar(24)
+  refId     String?   @map("ref_id") @db.Uuid
+  readAt    DateTime? @map("read_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user       User                     @relation(fields: [userId], references: [id])
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String   @id @default(uuid()) @db.Uuid
+  notificationId String   @map("notification_id") @db.Uuid
+  channel        String   @db.VarChar(12)
+  templateId     String?  @map("template_id") @db.VarChar(60)
+  status         String   @default("queued") @db.VarChar(16)
+  providerRef    String?  @map("provider_ref") @db.VarChar(120)
+  costMinor      Int?     @map("cost_minor")
+  attempts       Int      @default(0) @db.SmallInt
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@map("notification_deliveries")
+}
+
+model NotificationPref {
+  userId         String  @id @map("user_id") @db.Uuid
+  whatsappOptIn  Boolean @default(false) @map("whatsapp_opt_in")
+  smsOptIn       Boolean @default(true) @map("sms_opt_in")
+  quietHours     Json?   @map("quiet_hours")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notification_prefs")
+}
+
+model IdempotencyKey {
+  // §24/A7 corrected by §26/M3 — scope by user+endpoint+key for client retries.
+  // Webhook dedupe is a separate table (see WebhookEvent below).
+  // userId is nullable (unauthenticated endpoints like OTP request), so we use a synthetic
+  // id + a partial unique index. Lookups always carry all three.
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  endpoint      String   @db.VarChar(80)
+  key           String   @db.VarChar(80)
+  requestHash   String?  @map("request_hash") @db.VarChar(128)
+  responseJson  Json?    @map("response_json")
+  statusCode    Int?     @map("status_code") @db.SmallInt
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz
+
+  @@unique([userId, endpoint, key])
+  @@map("idempotency_keys")
+}
+
+model Device {
+  id                 String    @id @default(uuid()) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  deviceFingerprint  String?   @map("device_fingerprint") @db.VarChar(128)
+  pushToken          String?   @map("push_token")
+  pushTokenStatus    String    @default("active") @map("push_token_status") @db.VarChar(12) // §24/C7
+  tier               String?   @db.VarChar(10) // §27.5 device tier
+  lastSeenAt         DateTime? @map("last_seen_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user     User?     @relation(fields: [userId], references: [id])
+  sessions Session[]
+
+  @@map("devices")
+}
+
+model Referral {
+  id                 String   @id @default(uuid()) @db.Uuid
+  referrerId         String   @map("referrer_id") @db.Uuid
+  referredId         String?  @map("referred_id") @db.Uuid
+  code               String   @unique @db.VarChar(16)
+  status             String   @default("pending") @db.VarChar(16)
+  qualifiedByEvent   String?  @map("qualified_by_event") @db.VarChar(60)
+  rewardMinor        Int?     @map("reward_minor")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  referrer User @relation("Referrer", fields: [referrerId], references: [id])
+  referred User? @relation("Referred", fields: [referredId], references: [id])
+
+  @@map("referrals")
+}
+
+model FeatureFlag {
+  key        String  @id @db.VarChar(60)
+  enabled    Boolean @default(false)
+  rolloutPct Int     @default(0) @map("rollout_pct") @db.SmallInt
+  scope      Json?
+
+  @@map("feature_flags")
+}
+
+// ─────────────────────────────────────────────────────────────
+// §2.13 — new tables from the audit passes
+// ─────────────────────────────────────────────────────────────
+
+// §24/A1 — phone↔user binding history (SIM-swap forensics).
+model AccountHistory {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  phoneE164  String    @map("phone_e164") @db.VarChar(20)
+  boundAt    DateTime  @default(now()) @map("bound_at") @db.Timestamptz
+  unboundAt  DateTime? @map("unbound_at") @db.Timestamptz
+  reason     String?   @db.VarChar(30)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([phoneE164])
+  @@map("account_history")
+}
+
+// §26/M6 — multi-device sessions with revocation.
+model Session {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  deviceId          String?   @map("device_id") @db.Uuid
+  issuedAt          DateTime  @default(now()) @map("issued_at") @db.Timestamptz
+  lastSeenAt        DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz
+  refreshTokenHash  String    @map("refresh_token_hash") @db.VarChar(128)
+  scope             Json?
+  ipFirstSeen       String?   @map("ip_first_seen")
+  cityFirstSeen     String?   @map("city_first_seen") @db.VarChar(80)
+
+  user   User    @relation(fields: [userId], references: [id])
+  device Device? @relation(fields: [deviceId], references: [id])
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// §26/M3 — webhook dedupe (gateways replay; user-scoped idempotency doesn't cover S2S).
+model WebhookEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  provider    String    @db.VarChar(20)
+  providerRef String    @map("provider_ref") @db.VarChar(120)
+  eventType   String    @map("event_type") @db.VarChar(40)
+  payloadHash String    @map("payload_hash") @db.VarChar(128)
+  payload     Json?
+  processedAt DateTime? @map("processed_at") @db.Timestamptz
+  result      String?   @db.VarChar(20)
+  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz
+
+  @@unique([provider, providerRef, eventType])
+  @@map("webhook_events")
+}
+
+// §26/M20 — bank/PSP chargebacks.
+model Chargeback {
+  id          String    @id @default(uuid()) @db.Uuid
+  paymentId   String    @map("payment_id") @db.Uuid
+  allegedAt   DateTime  @default(now()) @map("alleged_at") @db.Timestamptz
+  status      String    @default("alleged") @db.VarChar(16)
+  amountMinor BigInt    @map("amount_minor")
+  reasonCode  String?   @map("reason_code") @db.VarChar(40)
+  providerRef String?   @map("provider_ref") @db.VarChar(120)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz
+  ledgerTxnId String?   @map("ledger_txn_id") @db.Uuid
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@map("chargebacks")
+}
+
+// §26/M9 — identity blocklist.
+model BannedIdentity {
+  id           String    @id @default(uuid()) @db.Uuid
+  kind         String    @db.VarChar(16)
+  value        String    @db.VarChar(128)
+  reason       String?   @db.VarChar(40)
+  moderatorId  String?   @map("moderator_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz
+
+  @@unique([kind, value])
+  @@map("banned_identities")
+}
+
+// §25.9 — user-level block list.
+model UserBlock {
+  userId    String   @map("user_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  reason    String?  @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  blocker User @relation("Blocker", fields: [userId], references: [id])
+  blocked User @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@id([userId, blockedId])
+  @@map("user_blocks")
+}
+
+// §26/M36 — FBR-compliant invoices for formal-business employers.
+model Invoice {
+  id           String   @id @default(uuid()) @db.Uuid
+  number       String   @unique @db.VarChar(40)
+  employerId   String   @map("employer_id") @db.Uuid
+  amountMinor  BigInt   @map("amount_minor")
+  currency     String   @default("PKR") @db.Char(3)
+  ledgerTxnId  String?  @map("ledger_txn_id") @db.Uuid
+  pdfUrl       String?  @map("pdf_url")
+  issuedAt     DateTime @default(now()) @map("issued_at") @db.Timestamptz
+  refType      String?  @map("ref_type") @db.VarChar(24)
+  refId        String?  @map("ref_id") @db.Uuid
+
+  employer User @relation(fields: [employerId], references: [id])
+
+  @@map("invoices")
+}
+
+// §25.3 — crews
+model Crew {
+  id          String   @id @default(uuid()) @db.Uuid
+  leadId      String   @map("lead_id") @db.Uuid
+  name        String?  @db.VarChar(160)
+  trade       String?  @db.VarChar(40)
+  payoutSplit Json     @default("{}") @map("payout_split")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  lead    User         @relation(fields: [leadId], references: [id])
+  members CrewMember[]
+  payouts CrewPayout[]
+
+  @@map("crews")
+}
+
+model CrewMember {
+  crewId   String  @map("crew_id") @db.Uuid
+  userId   String  @map("user_id") @db.Uuid
+  role     String? @db.VarChar(24)
+  active   Boolean @default(true)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  crew Crew @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([crewId, userId])
+  @@map("crew_members")
+}
+
+model CrewPayout {
+  id           String   @id @default(uuid()) @db.Uuid
+  crewId       String   @map("crew_id") @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  totalMinor   BigInt   @map("total_minor")
+  splitUsed    Json     @map("split_used")
+  ledgerTxnId  String   @map("ledger_txn_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  crew Crew @relation(fields: [crewId], references: [id])
+
+  @@map("crew_payouts")
+}
+
+// §25.3 — group orders (shops + contractors pool an order).
+model GroupOrder {
+  id              String    @id @default(uuid()) @db.Uuid
+  shopId          String    @map("shop_id") @db.Uuid
+  organizerId     String    @map("organizer_id") @db.Uuid
+  productLabel    String?   @map("product_label") @db.VarChar(200)
+  targetQty       Int?      @map("target_qty")
+  minParticipants Int?      @map("min_participants") @db.SmallInt
+  closesAt        DateTime? @map("closes_at") @db.Timestamptz
+  status          String    @default("open") @db.VarChar(16)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  shop         Shop                       @relation(fields: [shopId], references: [id])
+  organizer    User                       @relation(fields: [organizerId], references: [id])
+  participants GroupOrderParticipant[]
+
+  @@map("group_orders")
+}
+
+model GroupOrderParticipant {
+  groupOrderId String   @map("group_order_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  qty          Int
+  committedAt  DateTime @default(now()) @map("committed_at") @db.Timestamptz
+
+  groupOrder GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+
+  @@id([groupOrderId, userId])
+  @@map("group_order_participants")
+}
+
+// §28.C — voice-passphrase + trusted-contact recovery is the primary path.
+model RecoveryContact {
+  userId          String   @map("user_id") @db.Uuid
+  contactUserId   String   @map("contact_user_id") @db.Uuid
+  verified        Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  owner   User @relation("UserRecoveryOwner", fields: [userId], references: [id])
+  contact User @relation("UserRecoveryContact", fields: [contactUserId], references: [id])
+
+  @@id([userId, contactUserId])
+  @@map("recovery_contacts")
+}
+
+// §28 — tunable operational settings; preferred over scattering numbers across code.
+model Setting {
+  key         String   @id @db.VarChar(80)
+  value       Json
+  scope       Json?
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  @@map("settings")
+}
