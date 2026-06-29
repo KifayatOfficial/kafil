@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "KAFIL",
+    "slug": "kafil",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#FAF7F2"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "pk.kafil.app"
+    },
+    "android": {
+      "package": "pk.kafil.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF7F2"
+      }
+    },
+    "extra": {
+      "apiUrl": "http://10.0.2.2:3001"
+    }
+  }
+}
