@@ -1,0 +1,83 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://kafil:kafil_local@localhost:5432/kafil?schema=public
+  JWT_SECRET: ci-secret
+  NODE_ENV: test
+
+jobs:
+  build-and-test:
+    name: build + typecheck + test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: kafil
+          POSTGRES_PASSWORD: kafil_local
+          POSTGRES_DB: kafil
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U kafil -d kafil"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 22 (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: npx prisma generate
+
+      - name: Push Prisma schema to Postgres
+        working-directory: apps/api
+        run: npx prisma db push --skip-generate
+
+      - name: Apply partial-index + ledger-balance SQL (§24 invariants)
+        working-directory: apps/api
+        run: psql "$DATABASE_URL" -f prisma/sql/001_partial_indexes.sql
+        env:
+          PGPASSWORD: kafil_local
+
+      - name: Seed demo data
+        working-directory: apps/api
+        run: npx tsx prisma/seed.ts
+
+      - name: Typecheck — @kafil/core
+        run: npm --workspace @kafil/core run typecheck
+
+      - name: Typecheck — @kafil/api
+        run: npm --workspace @kafil/api run typecheck
+
+      - name: Typecheck — @kafil/web
+        run: npm --workspace @kafil/web run typecheck
+
+      - name: Typecheck — @kafil/mobile
+        run: npm --workspace @kafil/mobile run typecheck
+
+      - name: Tests — @kafil/api (vitest, real Postgres)
+        run: npm --workspace @kafil/api run test
