@@ -744,6 +744,10 @@ model Session {
   lastSeenAt        DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
   revokedAt         DateTime? @map("revoked_at") @db.Timestamptz
   refreshTokenHash  String    @map("refresh_token_hash") @db.VarChar(128)
+  // §24/A1 reuse detection: the hash of the PREVIOUS refresh token (rotated out on the
+  // last refresh). Presenting it again signals theft → revoke the whole session.
+  prevRefreshTokenHash String? @map("prev_refresh_token_hash") @db.VarChar(128)
+  revokedReason     String?   @map("revoked_reason") @db.VarChar(40)
   scope             Json?
   ipFirstSeen       String?   @map("ip_first_seen")
   cityFirstSeen     String?   @map("city_first_seen") @db.VarChar(80)

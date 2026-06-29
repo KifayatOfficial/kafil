@@ -121,7 +121,7 @@ describe('authService.verifyOtp — §24/A1 cooldown signal', () => {
   it('first-time signup on a fresh device returns cooldown=false (new user is always trusted)', async () => {
     const phone = `+923009${String(Math.floor(Math.random() * 1e6)).padStart(6, '0')}`;
     await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'fp-new-001' });
-    const otp = __test_getPendingOtp(phone);
+    const otp = await __test_getPendingOtp(phone);
     expect(otp).toBeTypeOf('string');
 
     const v = await authService.verifyOtp({ phone_e164: phone, otp: otp!, device_fingerprint: 'fp-new-001' });
@@ -137,14 +137,14 @@ describe('authService.verifyOtp — §24/A1 cooldown signal', () => {
 
     // First verify (creates the user with fingerprint fp-A).
     await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'fp-known-A1' });
-    const otp1 = __test_getPendingOtp(phone);
+    const otp1 = await __test_getPendingOtp(phone);
     const first = await authService.verifyOtp({ phone_e164: phone, otp: otp1!, device_fingerprint: 'fp-known-A1' });
     expect(first.ok).toBe(true);
     if (first.ok) expect(first.value.cooldown).toBe(false);
 
     // Same phone, NEW device fingerprint → §24/A1 unfamiliar-device cooldown fires.
     await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'fp-unfamiliar-B1' });
-    const otp2 = __test_getPendingOtp(phone);
+    const otp2 = await __test_getPendingOtp(phone);
     const second = await authService.verifyOtp({ phone_e164: phone, otp: otp2!, device_fingerprint: 'fp-unfamiliar-B1' });
     expect(second.ok).toBe(true);
     if (second.ok) {
@@ -168,12 +168,12 @@ describe('authService.verifyOtp — §24/A1 cooldown signal', () => {
 
     // First verify with fp-A.
     await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'fp-known-A1' });
-    let otp = __test_getPendingOtp(phone);
+    let otp = await __test_getPendingOtp(phone);
     await authService.verifyOtp({ phone_e164: phone, otp: otp!, device_fingerprint: 'fp-known-A1' });
 
     // Second verify with the SAME fp-A — known device, no cooldown.
     await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'fp-known-A1' });
-    otp = __test_getPendingOtp(phone);
+    otp = await __test_getPendingOtp(phone);
     const v = await authService.verifyOtp({ phone_e164: phone, otp: otp!, device_fingerprint: 'fp-known-A1' });
     expect(v.ok).toBe(true);
     if (v.ok) expect(v.value.cooldown).toBe(false);

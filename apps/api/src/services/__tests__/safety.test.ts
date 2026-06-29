@@ -265,7 +265,7 @@ describe('moderation + ban gating (§9)', () => {
     // Banned user can't get a session.
     const reqOtp = await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'devicefp-123456' });
     expect(reqOtp.ok).toBe(true);
-    const otp = __test_getPendingOtp(phone)!;
+    const otp = await __test_getPendingOtp(phone)!;
     const login = await authService.verifyOtp({ phone_e164: phone, otp, device_fingerprint: 'devicefp-123456' });
     expect(login.ok).toBe(false);
     if (!login.ok) expect(login.code).toBe('FORBIDDEN');
@@ -282,7 +282,7 @@ describe('moderation + ban gating (§9)', () => {
     expect(restored.statusReason).toBeNull();
 
     await authService.requestOtp({ phone_e164: phone, device_fingerprint: 'devicefp-123456' });
-    const otp2 = __test_getPendingOtp(phone)!;
+    const otp2 = await __test_getPendingOtp(phone)!;
     const login2 = await authService.verifyOtp({ phone_e164: phone, otp: otp2, device_fingerprint: 'devicefp-123456' });
     expect(login2.ok).toBe(true);
   });
