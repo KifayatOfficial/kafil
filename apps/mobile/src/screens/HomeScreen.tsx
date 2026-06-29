@@ -8,6 +8,8 @@ import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
 import { JobDetailScreen } from './JobDetailScreen';
+import { PostJobScreen } from './PostJobScreen';
+import { MyActivityScreen } from './MyActivityScreen';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -19,17 +21,30 @@ interface Job {
   status: string;
 }
 
+type Modal = 'detail' | 'post' | 'activity';
+
 export function HomeScreen() {
   const { api, signOut, inCooldown } = useAuth();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [modal, setModal] = useState<Modal | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [roles, setRoles] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const r = await api.get<{ ok: true; jobs: Job[] }>('/api/jobs');
     if (r.success) setJobs((r.data as { jobs: Job[] }).jobs);
     else setError('Failed to load');
+  }, [api]);
+
+  useEffect(() => {
+    (async () => {
+      const me = await api.get<{ ok: true; user: { roles: Array<{ role: string }> } }>('/api/auth/me');
+      const list = ((me.data as { user?: { roles?: Array<{ role: string }> } }).user?.roles ?? [])
+        .map((r) => r.role);
+      setRoles(list);
+    })().catch(() => undefined);
   }, [api]);
 
   useEffect(() => {
@@ -49,6 +64,24 @@ export function HomeScreen() {
     );
   }
 
+  if (modal === 'post') {
+    return (
+      <PostJobScreen
+        onClose={() => setModal(null)}
+        onPosted={() => {
+          setModal(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
+    );
+  }
+
+  if (modal === 'activity') {
+    return <MyActivityScreen onBack={() => setModal(null)} />;
+  }
+
+  const isEmployer = roles.includes('employer');
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -60,6 +93,17 @@ export function HomeScreen() {
         <Pressable onPress={() => void signOut()} hitSlop={10}>
           <Text style={{ color: motion.color.primary }}>Sign out</Text>
         </Pressable>
+      </View>
+
+      <View style={styles.actionRow}>
+        <Pressable onPress={() => setModal('activity')} style={styles.actionBtn}>
+          <Text style={styles.actionBtnText}>My activity</Text>
+        </Pressable>
+        {isEmployer ? (
+          <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]}>
+            <Text style={[styles.actionBtnText, { color: 'white' }]}>+ Post a job</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {inCooldown ? (
@@ -125,6 +169,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: motion.color.warning,
   },
+  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  actionBtn: {
+    flex: 1,
+    backgroundColor: motion.color.surface,
+    paddingVertical: 12,
+    borderRadius: motion.radius.pill,
+    alignItems: 'center',
+  },
+  actionBtnPrimary: { backgroundColor: motion.color.primary },
+  actionBtnText: { color: motion.color.text, fontWeight: '600' },
   cooldownTitle: { fontWeight: '700', color: motion.color.warning, marginBottom: 4 },
   cooldownBody: { color: motion.color.text },
   card: {
