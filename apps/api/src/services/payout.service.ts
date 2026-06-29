@@ -18,7 +18,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
-import { payOut as payOutLedger, ensureWallet } from './ledger';
+import { payOut as payOutLedger, reversePayout as reversePayoutLedger, ensureWallet } from './ledger';
 import { payoutProvider } from '../providers/payout.provider';
 
 const MIN_PAYOUT_MINOR = 10_000n; // 100 PKR floor — avoid dust withdrawals + fee waste.
@@ -142,27 +142,108 @@ export const payoutService = {
       payoutId,
     });
 
-    const status = result.ok ? 'sent' : 'failed';
-    await prisma.payout.update({
-      where: { id: payoutId },
-      data: { status, providerRef: result.providerRef ?? null },
-    });
-    await emitEvent(prisma, {
-      eventType: result.ok ? 'payout.sent' : 'payout.failed',
-      actorId: args.workerId,
-      refType: 'payout',
-      refId: payoutId,
-      payload: { provider_ref: result.providerRef ?? null, failure: result.failure ?? null },
-    });
+    if (result.ok) {
+      await prisma.payout.update({
+        where: { id: payoutId },
+        data: { status: 'sent', providerRef: result.providerRef ?? null },
+      });
+      await emitEvent(prisma, {
+        eventType: 'payout.sent',
+        actorId: args.workerId,
+        refType: 'payout',
+        refId: payoutId,
+        payload: { provider_ref: result.providerRef ?? null },
+      });
+      return ok({ payoutId, status: 'sent', amountMinor: args.amountMinor.toString() });
+    }
 
-    // NOTE: on provider failure the funds are sitting in gateway-clearing, not back in
-    // the worker's wallet. A reversal (reason:'reversal') is the correct compensation;
-    // for v0 the failed payout is surfaced to ops via the event + 'failed' status and
-    // reversed by the reconciliation job. We do NOT silently re-credit here.
+    // Provider failed: the money is in gateway_clearing, not with the worker and not at
+    // the PSP. Reverse it back to the worker in one txn so they're never out of pocket,
+    // and mark the payout 'reversed'. reverseOnce() is idempotent against a double-fire.
+    await reverseFailedPayout({
+      payoutId,
+      workerId: args.workerId,
+      amountMinor: args.amountMinor,
+      failure: result.failure ?? 'provider_failed',
+    });
+    return ok({ payoutId, status: 'reversed', amountMinor: args.amountMinor.toString() });
+  },
 
-    return ok({ payoutId, status, amountMinor: args.amountMinor.toString() });
+  /**
+   * Reconciliation sweep: find payouts still stuck in 'failed' (e.g. the process died
+   * between the provider failure and the inline reversal) and reverse each. Safe to run
+   * repeatedly — reverseFailedPayout is idempotent on the payout's reversal entry.
+   * Intended to be called by a scheduled job. Returns the ids it reversed.
+   */
+  async reconcileFailedPayouts(): Promise<Result<{ reversed: string[] }>> {
+    const stuck = await prisma.payout.findMany({
+      where: { status: 'failed' },
+      select: { id: true, workerId: true, amountMinor: true },
+      take: 200,
+    });
+    const reversed: string[] = [];
+    for (const p of stuck) {
+      const did = await reverseFailedPayout({
+        payoutId: p.id,
+        workerId: p.workerId,
+        amountMinor: p.amountMinor,
+        failure: 'reconciliation_sweep',
+      });
+      if (did) reversed.push(p.id);
+    }
+    return ok({ reversed });
   },
 };
+
+/**
+ * Reverse a failed payout back into the worker's wallet and mark it 'reversed'.
+ * Idempotent: if a reversal ledger entry already exists for this payout, or the payout
+ * is no longer 'failed', it's a no-op (returns false). The state flip + ledger reversal
+ * commit together. Returns true iff it performed the reversal.
+ */
+async function reverseFailedPayout(args: {
+  payoutId: string;
+  workerId: string;
+  amountMinor: bigint;
+  failure: string;
+}): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    // Lock the payout row so concurrent inline + sweep reversals serialize.
+    await tx.$queryRaw`SELECT id FROM payouts WHERE id = ${args.payoutId}::uuid FOR UPDATE`;
+    const current = await tx.payout.findUnique({
+      where: { id: args.payoutId },
+      select: { status: true },
+    });
+    // Only an un-reversed payout gets reversed. 'sent' must never be re-credited, and a
+    // prior 'reversed' is already done.
+    if (!current || (current.status !== 'failed' && current.status !== 'pending')) return false;
+
+    const prior = await tx.ledgerEntry.findFirst({
+      where: { reason: 'reversal', refType: 'payout', refId: args.payoutId },
+    });
+    if (prior) {
+      // Ledger already reversed but status lagged — fix the status and stop.
+      await tx.payout.update({ where: { id: args.payoutId }, data: { status: 'reversed' } });
+      return false;
+    }
+
+    await reversePayoutLedger(tx, {
+      workerId: args.workerId,
+      amountMinor: args.amountMinor,
+      refType: 'payout',
+      refId: args.payoutId,
+    });
+    await tx.payout.update({ where: { id: args.payoutId }, data: { status: 'reversed' } });
+    await emitEvent(tx, {
+      eventType: 'payout.reversed',
+      actorId: args.workerId,
+      refType: 'payout',
+      refId: args.payoutId,
+      payload: { amount_minor: args.amountMinor.toString(), failure: args.failure },
+    });
+    return true;
+  });
+}
 
 // Suppress unused namespace import lint (kept for parity with sibling services).
 void (null as unknown as Prisma.JsonValue);

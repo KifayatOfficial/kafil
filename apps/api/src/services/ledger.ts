@@ -234,6 +234,26 @@ export async function payOut(
   });
 }
 
+/**
+ * Reverse a failed payout: the exact inverse of payOut. Money never reached the PSP,
+ * so it returns from gateway_clearing back to the worker's wallet, making the worker
+ * whole. Used when the disbursement provider rejects/fails after the ledger committed.
+ */
+export async function reversePayout(
+  tx: Prisma.TransactionClient,
+  args: { workerId: string; amountMinor: bigint; refType: string; refId: string },
+): Promise<{ txnId: string }> {
+  if (args.amountMinor <= 0n) throw new Error('reversal amount must be positive');
+  const worker = await ensureWallet(tx, { userId: args.workerId, kind: 'user' });
+  const gw = await ensureWallet(tx, { userId: null, kind: 'payment_gateway_clearing' });
+  return writeLedgerTxn(tx, {
+    legs: [
+      { walletId: gw.id, amountMinor: -args.amountMinor, reason: 'reversal', refType: args.refType, refId: args.refId },
+      { walletId: worker.id, amountMinor: args.amountMinor, reason: 'reversal', refType: args.refType, refId: args.refId },
+    ],
+  });
+}
+
 /** Partial settlement: split escrow between worker and employer. */
 export async function partialSettle(
   tx: Prisma.TransactionClient,

@@ -29,4 +29,17 @@ class ConsolePayoutProvider implements PayoutProvider {
 }
 
 // Switched by env in prod (P2): JazzCashPayoutProvider / EasypaisaPayoutProvider.
-export const payoutProvider: PayoutProvider = new ConsolePayoutProvider();
+// Mutable so prod can install a real adapter at startup and tests can simulate a
+// provider failure; default is the console adapter.
+let active: PayoutProvider = new ConsolePayoutProvider();
+
+export const payoutProvider: PayoutProvider = {
+  send: (args) => active.send(args),
+};
+
+/** Install a provider (prod startup / tests). Returns the previous one for restore. */
+export function setPayoutProvider(p: PayoutProvider): PayoutProvider {
+  const prev = active;
+  active = p;
+  return prev;
+}
