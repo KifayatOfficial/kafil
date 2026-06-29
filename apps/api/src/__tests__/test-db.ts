@@ -46,6 +46,12 @@ export async function ensureMasonrySpecialty() {
 export async function cleanupTestData() {
   // Order matters: respect FKs.
   await prisma.event.deleteMany({}); // events are append-only; clearing keeps test runs predictable
+  // Money: ledger entries first, then payouts/payments/chargebacks (FKs), then wallets.
+  await prisma.ledgerEntry.deleteMany({});
+  await prisma.chargeback.deleteMany({});
+  await prisma.payout.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.wallet.deleteMany({});
   await prisma.notificationDelivery.deleteMany({}); // FK on notifications
   await prisma.notification.deleteMany({}); // FK on users
   await prisma.notificationPref.deleteMany({}); // FK on users

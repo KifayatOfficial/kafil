@@ -22,6 +22,7 @@ import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { notificationsService } from './notifications.service';
+import { escrowService } from './escrow.service';
 
 const QueueItemSource = z.enum(['ops_review', 'dispute']);
 export type QueueItemSource = z.infer<typeof QueueItemSource>;
@@ -189,12 +190,41 @@ export const workbenchService = {
 
     const a = await prisma.assignment.findUnique({
       where: { id: args.assignmentId },
-      include: { job: { select: { employerId: true, title: true } } },
+      include: { job: { select: { employerId: true, title: true, paymentMode: true } } },
     });
     if (!a) return err('NOT_FOUND', 'assignment not found');
 
     const newStatus = pickNextStatus(a.status, resolution);
     if (newStatus instanceof Error) return err('CONFLICT', newStatus.message);
+
+    // §6 — escrow-aware resolutions run the ledger BEFORE the state change so a
+    // ledger failure (e.g. already-settled) reverts cleanly without state drift.
+    if (a.job.paymentMode === 'escrow') {
+      if (resolution === 'pay_worker' || resolution === 'complete_in_active_party_favor') {
+        const r = await escrowService.releaseForAssignment({ assignmentId: a.id });
+        if (!r.ok) return err(r.code, r.message);
+      } else if (resolution === 'refund_employer' || resolution === 'cancel') {
+        const r = await escrowService.refundForAssignment({ assignmentId: a.id });
+        if (!r.ok) return err(r.code, r.message);
+      }
+      // 'partial' needs an explicit amount — caller-driven via input.payout_minor.
+      // We treat the absence of payout_minor as an error so ops can't accidentally
+      // partial-settle without picking an amount.
+      if (resolution === 'partial') {
+        const payoutRaw = (args.input as { payout_minor?: unknown }).payout_minor;
+        if (typeof payoutRaw !== 'string' && typeof payoutRaw !== 'number') {
+          return err('VALIDATION', 'partial resolution requires payout_minor');
+        }
+        let payoutMinor: bigint;
+        try {
+          payoutMinor = BigInt(payoutRaw as string | number);
+        } catch {
+          return err('VALIDATION', 'payout_minor must be an integer-as-string');
+        }
+        const r = await escrowService.partialSettleAssignment({ assignmentId: a.id, payoutMinor });
+        if (!r.ok) return err(r.code, r.message);
+      }
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       await tx.assignment.update({

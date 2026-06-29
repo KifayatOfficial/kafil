@@ -110,6 +110,14 @@ describe('core loop — apply → accept → mark-done → completed', () => {
     expect(a.employerMarkedDoneAt).not.toBeNull();
     expect(a.completedAt).not.toBeNull();
 
+    // Bug-fix verification (this round): the SLOT flipped to completed, and
+    // because this is a 1-slot job, the JOB also reached completed via the
+    // recompute helper — in the same txn as the assignment's auto-rollforward.
+    const finalSlot = await prisma.jobSlot.findUniqueOrThrow({ where: { id: a.slotId } });
+    expect(finalSlot.status).toBe('completed');
+    const finalJob = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+    expect(finalJob.status).toBe('completed');
+
     // Event spine — order matters.
     const events = await prisma.event.findMany({
       where: { refId: assignmentId },

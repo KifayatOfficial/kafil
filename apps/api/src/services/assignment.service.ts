@@ -36,6 +36,29 @@ export const assignmentService = {
     if (!application) return err('NOT_FOUND', 'application not found');
     if (application.status !== 'pending') return err('CONFLICT', 'application not pending');
 
+    // §6 — escrow-mode jobs cannot be accepted until the employer has funded escrow.
+    // This is what makes escrow "the platform holds the money" real — we don't issue
+    // an assignment with a payout obligation unless the money is already in our books.
+    const job = await prisma.job.findUniqueOrThrow({
+      where: { id: application.jobId },
+      select: { id: true, paymentMode: true, ratePkr: true, durationDays: true, headcount: true },
+    });
+    if (job.paymentMode === 'escrow') {
+      const target =
+        BigInt(job.ratePkr) * 100n * BigInt(job.durationDays ?? 1) * BigInt(job.headcount);
+      const funded = await prisma.ledgerEntry.aggregate({
+        where: { reason: 'escrow_fund', refType: 'job', refId: job.id, amountMinor: { gt: 0 } },
+        _sum: { amountMinor: true },
+      });
+      const have = (funded._sum.amountMinor ?? 0n) as bigint;
+      if (have < target) {
+        return err(
+          'CONFLICT',
+          `escrow not funded: have=${have.toString()} target=${target.toString()}`,
+        );
+      }
+    }
+
     try {
       const result = await prisma.$transaction(async (tx) => {
         // §24/A4 — atomic slot fill, optimistic-locked.
@@ -135,6 +158,12 @@ export const assignmentService = {
       // §4.3 — auto-rollforward to `completed` when BOTH parties have marked done.
       // This is the "both_done_to_completed" system transition; we run it inside the
       // same txn so the client sees the final state in one round trip.
+      //
+      // Bug-fix (this round): completing the assignment was leaving the slot at
+      // 'filled' and the job at 'filled' — only the assignment flipped. That meant
+      // job-level recompute never reached 'completed' even when every slot was done.
+      // Now we flip the slot to 'completed' and call recomputeJobState in the same
+      // txn so the job follows.
       if (
         (next === 'awaiting_employer_confirm' || next === 'awaiting_worker_confirm') &&
         updated.workerMarkedDoneAt &&
@@ -148,6 +177,14 @@ export const assignmentService = {
             version: { increment: 1 },
           },
         });
+        // Flip THIS slot to completed (its assignment is done).
+        await tx.jobSlot.update({
+          where: { id: updated.slotId },
+          data: { status: 'completed', version: { increment: 1 } },
+        });
+        // Recompute job-level state: if all active slots are completed, job→completed.
+        await assignmentRepository.recomputeJobState(tx, updated.jobId);
+
         await emitEvent(tx, {
           eventType: 'assignment.both_done_to_completed',
           actorId: null,
