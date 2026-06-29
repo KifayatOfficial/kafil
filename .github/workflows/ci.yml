@@ -57,11 +57,21 @@ jobs:
         working-directory: apps/api
         run: npx prisma db push --skip-generate
 
+      # `psql` is not preinstalled on ubuntu-24.04 runners and we don't want a sudo apt
+      # step. The postgres service container already has psql; run our SQL inside it
+      # via `docker exec`, piping the file from the runner's filesystem.
       - name: Apply partial-index + ledger-balance SQL (§24 invariants)
         working-directory: apps/api
-        run: psql "$DATABASE_URL" -f prisma/sql/001_partial_indexes.sql
-        env:
-          PGPASSWORD: kafil_local
+        run: |
+          set -e
+          PG_CID=$(docker ps --filter "ancestor=postgis/postgis:16-3.4" --format "{{.ID}}" | head -n1)
+          if [ -z "$PG_CID" ]; then
+            echo "could not find the postgres service container"
+            docker ps
+            exit 1
+          fi
+          docker exec -i -e PGPASSWORD=kafil_local "$PG_CID" \
+            psql -U kafil -d kafil < prisma/sql/001_partial_indexes.sql
 
       - name: Seed demo data
         working-directory: apps/api
