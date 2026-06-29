@@ -4,14 +4,29 @@
 
 import { NextResponse } from 'next/server';
 import { jobService } from '../../../services/job.service';
+import { matchingService } from '../../../services/matching.service';
 import { idempotent } from '../../../lib/idempotency';
 import { statusFor } from '../../../lib/result';
 import { getActorOrDevStub } from '../../../lib/auth';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+// GET /api/jobs — the worker's feed.
+//   • Authenticated worker WITH a base location → §8 geo-ranked feed (nearest + best
+//     match first), with a per-job "why" breakdown. `ranked: true` tells the client.
+//   • Otherwise (anonymous dev stub, or worker without a location yet) → the plain
+//     date-ordered open list, so the app still works before onboarding completes.
+export async function GET(req: Request) {
+  const actor = await getActorOrDevStub(req);
+  if (actor?.userId) {
+    const ranked = await matchingService.rankedJobsForWorker({ workerId: actor.userId });
+    if (ranked.ok && ranked.value.located) {
+      return NextResponse.json({ ok: true, ranked: true, jobs: ranked.value.jobs });
+    }
+  }
   const res = await jobService.listOpen();
   if (!res.ok) return NextResponse.json(res, { status: statusFor(res.code) });
-  return NextResponse.json({ ok: true, jobs: res.value });
+  return NextResponse.json({ ok: true, ranked: false, jobs: res.value });
 }
 
 export async function POST(req: Request) {

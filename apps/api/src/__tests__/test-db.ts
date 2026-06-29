@@ -21,14 +21,14 @@ export async function makeUser(overrides?: Partial<{ phone: string; role: string
   return u;
 }
 
-export async function makeLocation() {
+export async function makeLocation(opts?: { lat?: number; lng?: number; label?: string }) {
   return prisma.location.create({
     data: {
-      label: 'Test location',
+      label: opts?.label ?? 'Test location',
       district: 'Swat',
       tehsil: 'Babuzai',
-      lat: 34.78,
-      lng: 72.36,
+      lat: opts?.lat ?? 34.78,
+      lng: opts?.lng ?? 72.36,
       precision: 'pin',
     },
   });
