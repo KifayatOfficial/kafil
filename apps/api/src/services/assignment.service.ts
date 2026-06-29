@@ -19,6 +19,7 @@ import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { applicationRepository } from '../repositories/application.repository';
 import { assignmentRepository } from '../repositories/assignment.repository';
+import { conversationRepository } from '../repositories/conversation.repository';
 
 export const assignmentService = {
   /** Employer accepts an application → slot fill + create assignment, all atomic. */
@@ -26,7 +27,7 @@ export const assignmentService = {
     employerId: string;
     applicationId: string;
     input: unknown;
-  }): Promise<Result<{ assignmentId: string }>> {
+  }): Promise<Result<{ assignmentId: string; conversationId: string }>> {
     const parse = AcceptApplicationInput.safeParse(args.input);
     if (!parse.success) return err('VALIDATION', 'invalid input', parse.error.flatten());
     const i = parse.data;
@@ -61,15 +62,25 @@ export const assignmentService = {
         await applicationRepository.setStatus(tx, application.id, 'accepted');
         await assignmentRepository.recomputeJobState(tx, application.jobId);
 
+        // §5 — auto-create the chat the moment a worker is assigned. This is the
+        // anti-disintermediation default channel; both parties can talk without
+        // exchanging raw phone numbers. PII in messages is redacted at send-time.
+        const conversation = await conversationRepository.ensureForAssignment(tx, {
+          jobId: application.jobId,
+          workerId: application.workerId,
+          employerId: args.employerId,
+          assignmentId: assignment.id,
+        });
+
         await emitEvent(tx, {
           eventType: 'application.accepted',
           actorId: args.employerId,
           refType: 'assignment',
           refId: assignment.id,
-          payload: { application_id: application.id },
+          payload: { application_id: application.id, conversation_id: conversation.id },
         });
 
-        return { assignmentId: assignment.id };
+        return { assignmentId: assignment.id, conversationId: conversation.id };
       });
 
       return ok(result);

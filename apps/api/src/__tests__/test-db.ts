@@ -46,6 +46,10 @@ export async function ensureMasonrySpecialty() {
 export async function cleanupTestData() {
   // Order matters: respect FKs.
   await prisma.event.deleteMany({}); // events are append-only; clearing keeps test runs predictable
+  await prisma.fraudSignal.deleteMany({}); // FK on users
+  await prisma.message.deleteMany({}); // FK on conversations + users
+  await prisma.conversationParticipant.deleteMany({});
+  await prisma.conversation.deleteMany({});
   await prisma.review.deleteMany({}); // reviews FK assignments — must precede
   await prisma.workLog.deleteMany({});
   await prisma.disputeEvidence.deleteMany({});
