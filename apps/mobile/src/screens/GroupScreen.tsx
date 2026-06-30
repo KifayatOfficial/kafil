@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { haptic } from '../motion/feedback';
@@ -102,18 +103,13 @@ export function GroupScreen({ groupId, groupName, joined: joinedInitial, onBack 
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        >
-          {posts === null ? (
-            <SkeletonList rows={4} />
-          ) : posts.length === 0 ? (
-            <Text style={styles.muted}>{i18n.t(lang, 'community.posts_empty')}</Text>
-          ) : (
-            posts.map((p) => (
+        {posts && posts.length > 0 ? (
+          // §P1.3b — virtualize the post feed (image-heavy, can grow long in active groups).
+          <FlashList
+            data={posts}
+            keyExtractor={(p) => p.id}
+            renderItem={({ item: p }) => (
               <PostCard
-                key={p.id}
                 post={p}
                 lang={lang}
                 api={api}
@@ -122,9 +118,23 @@ export function GroupScreen({ groupId, groupName, joined: joinedInitial, onBack 
                 onReport={() => setReport(p.id)}
                 canComment={joined}
               />
-            ))
-          )}
-        </ScrollView>
+            )}
+            estimatedItemSize={140}
+            contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          >
+            {posts === null ? (
+              <SkeletonList rows={4} />
+            ) : (
+              <Text style={styles.muted}>{i18n.t(lang, 'community.posts_empty')}</Text>
+            )}
+          </ScrollView>
+        )}
 
         {/* Composer (members) or a join prompt (non-members). */}
         {joined ? (

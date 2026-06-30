@@ -4,6 +4,7 @@
 // later reading the same /api/discovery/nearby data (each row carries lat/lng).
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { haptic } from '../motion/feedback';
@@ -77,19 +78,13 @@ export function NearbyScreen({ onBack, onOpen }: Props) {
         ))}
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-      >
-        {rows === null ? (
-          <SkeletonList rows={5} />
-        ) : !located ? (
-          <Text style={styles.muted}>{i18n.t(lang, 'nearby.no_location')}</Text>
-        ) : filtered.length === 0 ? (
-          <Text style={styles.muted}>{i18n.t(lang, 'nearby.none')}</Text>
-        ) : (
-          filtered.map((r) => (
-            <Pressable key={`${r.kind}:${r.id}`} onPress={() => onOpen?.(r)} style={styles.card}>
+      {rows !== null && located && filtered.length > 0 ? (
+        // §P1.3b — virtualize discovery results (cross-pillar, can be large in a dense area).
+        <FlashList
+          data={filtered}
+          keyExtractor={(r) => `${r.kind}:${r.id}`}
+          renderItem={({ item: r }) => (
+            <Pressable onPress={() => onOpen?.(r)} style={styles.card}>
               <Text style={styles.icon}>{KIND_ICON[r.kind]}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{r.title}</Text>
@@ -97,9 +92,25 @@ export function NearbyScreen({ onBack, onOpen }: Props) {
               </View>
               <Text style={styles.dist}>{km(r.distanceM)}</Text>
             </Pressable>
-          ))
-        )}
-      </ScrollView>
+          )}
+          estimatedItemSize={84}
+          contentContainerStyle={{ padding: 16 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        />
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        >
+          {rows === null ? (
+            <SkeletonList rows={5} />
+          ) : !located ? (
+            <Text style={styles.muted}>{i18n.t(lang, 'nearby.no_location')}</Text>
+          ) : (
+            <Text style={styles.muted}>{i18n.t(lang, 'nearby.none')}</Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }

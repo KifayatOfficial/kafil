@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { haptic } from '../motion/feedback';
@@ -110,36 +111,51 @@ export function ShopsScreen({ onBack }: Props) {
           </View>
         ) : null}
 
-        <ScrollView
-          contentContainerStyle={{ padding: 16 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        >
-          {shops === null ? (
-            <SkeletonList rows={4} />
-          ) : shops.length === 0 ? (
-            <Text style={styles.muted}>{i18n.t(lang, 'shops.none')}</Text>
-          ) : (
-            shops.map((s) => (
-              <Pressable key={s.id} onPress={() => setOpenId(s.id)} style={styles.card}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.name}>{s.name}</Text>
-                    {s.verifiedTier !== 'free' ? <Text style={styles.verified}>✓</Text> : null}
-                  </View>
-                  {s.description ? <Text style={styles.desc} numberOfLines={1}>{s.description}</Text> : null}
-                  <Text style={styles.meta}>
-                    ★ {s.rating.toFixed(1)}
-                    {s.categories[0] ? ` · ${s.categories[0]}` : ''}
-                    {s.location?.district ? ` · ${s.location.district}` : ''}
-                  </Text>
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </Pressable>
-            ))
-          )}
-        </ScrollView>
+        {shops && shops.length > 0 ? (
+          // §P1.3b — FlashList virtualizes the directory (8k+ shops targeted year 1).
+          <FlashList
+            data={shops}
+            keyExtractor={(s) => s.id}
+            renderItem={({ item }) => <ShopCard shop={item} onPress={() => setOpenId(item.id)} />}
+            estimatedItemSize={96}
+            contentContainerStyle={{ padding: 16 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          >
+            {shops === null ? (
+              <SkeletonList rows={4} />
+            ) : (
+              <Text style={styles.muted}>{i18n.t(lang, 'shops.none')}</Text>
+            )}
+          </ScrollView>
+        )}
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+function ShopCard({ shop: s, onPress }: { shop: ShopRow; onPress: () => void }) {
+  const styles = useStyles();
+  return (
+    <Pressable onPress={onPress} style={styles.card}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{s.name}</Text>
+          {s.verifiedTier !== 'free' ? <Text style={styles.verified}>✓</Text> : null}
+        </View>
+        {s.description ? <Text style={styles.desc} numberOfLines={1}>{s.description}</Text> : null}
+        <Text style={styles.meta}>
+          ★ {s.rating.toFixed(1)}
+          {s.categories[0] ? ` · ${s.categories[0]}` : ''}
+          {s.location?.district ? ` · ${s.location.district}` : ''}
+        </Text>
+      </View>
+      <Text style={styles.chevron}>›</Text>
+    </Pressable>
   );
 }
 

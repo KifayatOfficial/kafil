@@ -12,7 +12,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { i18n, motion, randomUUID } from '@kafil/core';
+import { FlashList } from '@shopify/flash-list';
+import { i18n, motion, randomUUID, type Lang } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { haptic } from '../motion/feedback';
 import { SkeletonList } from '../components/Skeleton';
@@ -126,38 +127,65 @@ export function CommunityScreen({ onBack }: Props) {
           </View>
         ) : null}
 
-        <ScrollView
-          contentContainerStyle={{ padding: 16 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        >
-          {groups === null ? (
-            <SkeletonList rows={4} />
-          ) : groups.length === 0 ? (
-            <Text style={styles.muted}>{i18n.t(lang, 'community.none')}</Text>
-          ) : (
-            groups.map((g) => (
-              <Pressable key={g.id} onPress={() => setOpen(g)} style={styles.card}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{g.name}</Text>
-                  {g.description ? <Text style={styles.desc} numberOfLines={1}>{g.description}</Text> : null}
-                  <Text style={styles.meta}>
-                    {g.memberCount} {i18n.t(lang, 'community.members')} · {g.postCount} 📝
-                    {g.location?.district ? ` · ${g.location.district}` : ''}
-                  </Text>
-                </View>
-                {g.joined ? (
-                  <View style={styles.joinedPill}><Text style={styles.joinedPillText}>{i18n.t(lang, 'community.joined')}</Text></View>
-                ) : (
-                  <Pressable onPress={() => join(g)} style={styles.joinPill} accessibilityLabel={i18n.t(lang, 'community.join')}>
-                    <Text style={styles.joinPillText}>{i18n.t(lang, 'community.join')}</Text>
-                  </Pressable>
-                )}
-              </Pressable>
-            ))
-          )}
-        </ScrollView>
+        {groups && groups.length > 0 ? (
+          // §P1.3b — virtualize the group directory.
+          <FlashList
+            data={groups}
+            keyExtractor={(g) => g.id}
+            renderItem={({ item }) => (
+              <GroupRowCard group={item} lang={lang} onOpen={() => setOpen(item)} onJoin={() => join(item)} />
+            )}
+            estimatedItemSize={92}
+            contentContainerStyle={{ padding: 16 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          >
+            {groups === null ? (
+              <SkeletonList rows={4} />
+            ) : (
+              <Text style={styles.muted}>{i18n.t(lang, 'community.none')}</Text>
+            )}
+          </ScrollView>
+        )}
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+function GroupRowCard({
+  group: g,
+  lang,
+  onOpen,
+  onJoin,
+}: {
+  group: GroupRow;
+  lang: Lang;
+  onOpen: () => void;
+  onJoin: () => void;
+}) {
+  const styles = useStyles();
+  return (
+    <Pressable onPress={onOpen} style={styles.card}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.name}>{g.name}</Text>
+        {g.description ? <Text style={styles.desc} numberOfLines={1}>{g.description}</Text> : null}
+        <Text style={styles.meta}>
+          {g.memberCount} {i18n.t(lang, 'community.members')} · {g.postCount} 📝
+          {g.location?.district ? ` · ${g.location.district}` : ''}
+        </Text>
+      </View>
+      {g.joined ? (
+        <View style={styles.joinedPill}><Text style={styles.joinedPillText}>{i18n.t(lang, 'community.joined')}</Text></View>
+      ) : (
+        <Pressable onPress={onJoin} style={styles.joinPill} accessibilityLabel={i18n.t(lang, 'community.join')}>
+          <Text style={styles.joinPillText}>{i18n.t(lang, 'community.join')}</Text>
+        </Pressable>
+      )}
+    </Pressable>
   );
 }
 
