@@ -89,6 +89,14 @@ type StringKey =
   | 'shops.your_rating'
   | 'shops.submit_review'
   | 'shops.review_done'
+  | 'nearby.title'
+  | 'nearby.none'
+  | 'nearby.all'
+  | 'nearby.jobs'
+  | 'nearby.shops'
+  | 'nearby.groups'
+  | 'nearby.km_away'
+  | 'nearby.no_location'
   | 'security.cooldown_title'
   | 'security.cooldown_body'
   | 'onboarding.otp_title'
@@ -256,6 +264,14 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'shops.your_rating': 'ستاسو درجه',
     'shops.submit_review': 'ولیږئ',
     'shops.review_done': 'مننه — بیاکتنه مو خوندي شوه!',
+    'nearby.title': 'نږدې',
+    'nearby.none': 'ستاسو نږدې هیڅ شی ونه موندل شو.',
+    'nearby.all': 'ټول',
+    'nearby.jobs': 'کارونه',
+    'nearby.shops': 'پلورنځي',
+    'nearby.groups': 'ډلې',
+    'nearby.km_away': 'کیلومتره لرې',
+    'nearby.no_location': 'لومړی خپل ځای وټاکئ',
     'security.cooldown_title': 'نوی وسیله — د خوندیتوب ځنډ',
     'security.cooldown_body': 'ستاسو د خوندیتوب لپاره، د نوي وسیلې څخه د ننوتلو وروسته د ۲۴ ساعتونو لپاره د پیسو کارونه بند دي. لټون او خبرې عادي کار کوي.',
     'onboarding.otp_title': '۶ عددي کوډ ولیکئ',
@@ -422,6 +438,14 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'shops.your_rating': 'آپ کی درجہ بندی',
     'shops.submit_review': 'بھیجیں',
     'shops.review_done': 'شکریہ — آپ کا جائزہ محفوظ ہو گیا!',
+    'nearby.title': 'قریب',
+    'nearby.none': 'آپ کے قریب کچھ نہیں ملا۔',
+    'nearby.all': 'سب',
+    'nearby.jobs': 'کام',
+    'nearby.shops': 'دکانیں',
+    'nearby.groups': 'گروپ',
+    'nearby.km_away': 'کلومیٹر دور',
+    'nearby.no_location': 'پہلے اپنا مقام منتخب کریں',
     'security.cooldown_title': 'نیا آلہ — سیکیورٹی وقفہ',
     'security.cooldown_body': 'آپ کی حفاظت کے لیے، نئے آلے پر سائن ان کے بعد 24 گھنٹے رقم کے کام بند ہیں۔ براؤزنگ اور چیٹ معمول کے مطابق کام کرتے ہیں۔',
     'onboarding.otp_title': '6 ہندسوں کا کوڈ درج کریں',
@@ -588,6 +612,14 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'shops.your_rating': 'Your rating',
     'shops.submit_review': 'Submit',
     'shops.review_done': 'Thanks — your review is saved!',
+    'nearby.title': 'Nearby',
+    'nearby.none': 'Nothing found near you.',
+    'nearby.all': 'All',
+    'nearby.jobs': 'Jobs',
+    'nearby.shops': 'Shops',
+    'nearby.groups': 'Groups',
+    'nearby.km_away': 'km away',
+    'nearby.no_location': 'Set your location first',
     'security.cooldown_title': 'New device — security cooldown',
     'security.cooldown_body': 'For your safety, money actions are disabled for 24 hours after signing in on a new device. Browsing and chat work normally.',
     'onboarding.otp_title': 'Enter the 6-digit code',

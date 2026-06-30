@@ -16,6 +16,7 @@ import { WalletScreen } from './WalletScreen';
 import { ReferralScreen } from './ReferralScreen';
 import { CommunityScreen } from './CommunityScreen';
 import { ShopsScreen } from './ShopsScreen';
+import { NearbyScreen } from './NearbyScreen';
 import { SkeletonList } from '../components/Skeleton';
 import { SyncIndicator } from '../components/SyncIndicator';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -32,7 +33,7 @@ interface Job {
   featuredUntil?: string | null;
 }
 
-type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet' | 'referrals' | 'community' | 'shops';
+type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet' | 'referrals' | 'community' | 'shops' | 'nearby';
 
 export function HomeScreen() {
   const { api, signOut, inCooldown, lang } = useAuth();
@@ -123,6 +124,20 @@ export function HomeScreen() {
     return <ShopsScreen onBack={() => setModal(null)} />;
   }
 
+  if (modal === 'nearby') {
+    // Tapping a nearby job opens its detail; shops/groups route to their pillars.
+    return (
+      <NearbyScreen
+        onBack={() => setModal(null)}
+        onOpen={(row) => {
+          if (row.kind === 'job') { setOpenJobId(row.id); setModal(null); }
+          else if (row.kind === 'shop') setModal('shops');
+          else setModal('community');
+        }}
+      />
+    );
+  }
+
   const isEmployer = roles.includes('employer');
 
   return (
@@ -152,6 +167,9 @@ export function HomeScreen() {
         </Pressable>
         <Pressable onPress={() => setModal('shops')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'shops.title')}>
           <Text style={styles.actionBtnText}>🏪</Text>
+        </Pressable>
+        <Pressable onPress={() => setModal('nearby')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'nearby.title')}>
+          <Text style={styles.actionBtnText}>📍</Text>
         </Pressable>
         <Pressable onPress={() => setModal('wallet')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'wallet.title')}>
           <Text style={styles.actionBtnText}>💰</Text>
