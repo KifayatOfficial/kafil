@@ -87,6 +87,10 @@ type StringKey =
   | 'offline.apply_will_send'
   | 'offline.queued'
   | 'offline.banner'
+  | 'sync.offline'
+  | 'sync.syncing'
+  | 'sync.synced'
+  | 'sync.failed'
   | 'chat.no_messages'
   | 'chat.sending'
   | 'chat.send_failed'
@@ -202,6 +206,10 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'offline.apply_will_send': 'تاسو آفلاین یاست. ستاسو غوښتنه به وساتل شي او کله چې انټرنیټ بیرته راشي خپله ولېږل کیږي.',
     'offline.queued': 'په قطار کې — به ولېږل شي',
     'offline.banner': 'آفلاین — بدلونونه ساتل کیږي',
+    'sync.offline': 'آفلاین',
+    'sync.syncing': 'همغږي کیږي',
+    'sync.synced': 'خوندي شو',
+    'sync.failed': 'ونه لېږل شول — ټک ووهئ',
     'chat.no_messages': 'تر اوسه پیغام نشته',
     'chat.sending': 'لېږل کیږي…',
     'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
@@ -316,6 +324,10 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'offline.apply_will_send': 'آپ آف لائن ہیں۔ آپ کی درخواست محفوظ ہو جائے گی اور انٹرنیٹ واپس آتے ہی خود بھیج دی جائے گی۔',
     'offline.queued': 'قطار میں — بھیجی جائے گی',
     'offline.banner': 'آف لائن — تبدیلیاں محفوظ ہو رہی ہیں',
+    'sync.offline': 'آف لائن',
+    'sync.syncing': 'سنک ہو رہا ہے',
+    'sync.synced': 'محفوظ',
+    'sync.failed': 'نہیں بھیجا گیا — ٹیپ کریں',
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
     'chat.sending': 'بھیجا جا رہا ہے…',
     'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
@@ -430,6 +442,10 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'offline.apply_will_send': "You're offline. Your application is saved and will send automatically when you're back online.",
     'offline.queued': 'Queued — will send',
     'offline.banner': 'Offline — your changes are saved',
+    'sync.offline': 'Offline',
+    'sync.syncing': 'Syncing',
+    'sync.synced': 'Saved',
+    'sync.failed': "Didn't send — tap",
     'chat.no_messages': 'No messages yet',
     'chat.sending': 'Sending…',
     'chat.send_failed': "Didn't send — tap to retry",

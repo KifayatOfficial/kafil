@@ -15,6 +15,7 @@ import { ChatListScreen } from './ChatListScreen';
 import { WalletScreen } from './WalletScreen';
 import { ReferralScreen } from './ReferralScreen';
 import { SkeletonList } from '../components/Skeleton';
+import { SyncIndicator } from '../components/SyncIndicator';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -110,7 +111,8 @@ export function HomeScreen() {
         <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.E_MASCOT} style={styles.mascot} loop />
         <View style={{ flex: 1, marginStart: 10 }}>
           <Text style={styles.h1}>{i18n.t(lang, 'app.name')}</Text>
-          <Text style={styles.muted}>{i18n.t(lang, 'nav.home')}</Text>
+          {/* §13/§25.4 — global sync status; renders nothing when there's no queued work. */}
+          <SyncIndicator />
         </View>
         <ThemeToggle />
         <Pressable onPress={() => void signOut()} hitSlop={10} accessibilityLabel={i18n.t(lang, 'common.sign_out')} style={{ marginStart: 12 }}>
