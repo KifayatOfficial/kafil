@@ -103,6 +103,12 @@ type StringKey =
   | 'badge.online_now'
   | 'badge.active_today'
   | 'badge.active_week'
+  | 'badge.pro'
+  | 'pro.title'
+  | 'pro.subtitle'
+  | 'pro.cta'
+  | 'pro.active'
+  | 'pro.success'
   | 'chat.no_messages'
   | 'chat.sending'
   | 'chat.send_failed'
@@ -234,6 +240,12 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'badge.online_now': 'اوس آنلاین',
     'badge.active_today': 'نن فعال',
     'badge.active_week': 'دا اونۍ فعال',
+    'badge.pro': '★ پرو',
+    'pro.title': 'پرو کارګر شئ',
+    'pro.subtitle': 'د پرو نښان، په لټون کې لوړ ځای، او لوی پروفایل — کارفرمایان پرو کارګران ژر مني.',
+    'pro.cta': 'پرو شئ',
+    'pro.active': 'تاسو پرو یاست',
+    'pro.success': 'ته اوس پرو یې!',
     'chat.no_messages': 'تر اوسه پیغام نشته',
     'chat.sending': 'لېږل کیږي…',
     'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
@@ -364,6 +376,12 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'badge.online_now': 'ابھی آن لائن',
     'badge.active_today': 'آج فعال',
     'badge.active_week': 'اس ہفتے فعال',
+    'badge.pro': '★ پرو',
+    'pro.title': 'پرو کارکن بنیں',
+    'pro.subtitle': 'پرو بیج، تلاش میں اوپر، اور بڑا پروفائل — آجر پرو کارکنوں کو جلدی قبول کرتے ہیں۔',
+    'pro.cta': 'پرو بنیں',
+    'pro.active': 'آپ پرو ہیں',
+    'pro.success': 'آپ اب پرو ہیں!',
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
     'chat.sending': 'بھیجا جا رہا ہے…',
     'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
@@ -494,6 +512,12 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'badge.online_now': 'Online now',
     'badge.active_today': 'Active today',
     'badge.active_week': 'Active this week',
+    'badge.pro': '★ Pro',
+    'pro.title': 'Become a Pro worker',
+    'pro.subtitle': 'Pro badge, higher in search, and a bigger profile — employers accept Pro workers faster.',
+    'pro.cta': 'Go Pro',
+    'pro.active': "You're Pro",
+    'pro.success': "You're now Pro!",
     'chat.no_messages': 'No messages yet',
     'chat.sending': 'Sending…',
     'chat.send_failed': "Didn't send — tap to retry",

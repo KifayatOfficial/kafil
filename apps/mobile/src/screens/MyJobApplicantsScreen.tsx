@@ -40,6 +40,7 @@ interface Applicant {
       ratingBayesian: string | number | null;
       jobsCompleted: number;
       bio: string | null;
+      proUntil: string | null;
     } | null;
   };
 }
@@ -329,6 +330,9 @@ function ApplicantCard({
       {/* §25.2 — narrow trust signals beat one fuzzy "verified": phone/CNIC level +
           a live "last active" pill that the employer reads at a glance. */}
       <View style={styles.badgeRow}>
+        {wp?.proUntil && new Date(wp.proUntil).getTime() > Date.now() ? (
+          <Badge label={i18n.t(lang, 'badge.pro')} tone={colors.accent} />
+        ) : null}
         <LastActiveBadge lastSeenAt={lastSeen} lang={lang} />
         {app.worker.kycLevel >= 1 ? (
           <Badge label={i18n.t(lang, 'badge.phone_verified')} tone={colors.primary} />

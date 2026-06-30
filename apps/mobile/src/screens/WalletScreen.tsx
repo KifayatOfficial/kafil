@@ -62,6 +62,10 @@ export function WalletScreen({ onBack }: Props) {
   const [topUpPkr, setTopUpPkr] = useState('');
   const [toppingUp, setToppingUp] = useState(false);
   const [topUpNote, setTopUpNote] = useState<string | null>(null);
+  // §6.1 worker-pro: whether the user is a worker, and their current pro expiry.
+  const [isWorker, setIsWorker] = useState(false);
+  const [proUntil, setProUntil] = useState<string | null>(null);
+  const [goingPro, setGoingPro] = useState(false);
 
   const load = useCallback(async () => {
     const r = await api.get<{ ok: true; wallet: Wallet }>('/api/wallet');
@@ -74,12 +78,45 @@ export function WalletScreen({ onBack }: Props) {
     }
   }, [api, L]);
 
+  const loadProfile = useCallback(async () => {
+    const r = await api.get<{ ok: true; user: { roles?: Array<{ role: string }>; workerProfile?: { proUntil?: string | null } } }>(
+      '/api/auth/me',
+    );
+    if (!r.success) return;
+    const u = (r.data as { user?: { roles?: Array<{ role: string }>; workerProfile?: { proUntil?: string | null } } }).user;
+    setIsWorker(!!u?.roles?.some((x) => x.role === 'worker'));
+    setProUntil(u?.workerProfile?.proUntil ?? null);
+  }, [api]);
+
   useEffect(() => {
     load().catch(() => {
       setError(i18n.t(L, 'error.generic'));
       setPhase('error');
     });
-  }, [load]);
+    void loadProfile();
+  }, [load, loadProfile]);
+
+  const isPro = !!proUntil && new Date(proUntil).getTime() > Date.now();
+  const goPro = async () => {
+    if (goingPro || inCooldown || isPro) return;
+    setGoingPro(true);
+    setError(null);
+    void haptic(motion.hapticToken.TAP_MEDIUM);
+    const r = await api.post('/api/worker-profile/upgrade-pro', {}, { idempotencyKey: randomUUID() });
+    if (r.success) {
+      void haptic(motion.hapticToken.SUCCESS);
+      setTopUpNote(i18n.t(L, 'pro.success'));
+      await Promise.all([load(), loadProfile()]);
+    } else {
+      void haptic(motion.hapticToken.ERROR);
+      setError(
+        r.status === 409
+          ? i18n.t(L, 'featured.insufficient')
+          : (r.data as { message?: string }).message ?? i18n.t(L, 'error.generic'),
+      );
+    }
+    setGoingPro(false);
+  };
 
   const balancePkr = wallet ? Math.floor(Number(wallet.balanceMinor) / 100) : 0;
   const enteredPkr = Number.parseInt(amountPkr, 10);
@@ -245,6 +282,30 @@ export function WalletScreen({ onBack }: Props) {
             </View>
             {topUpNote ? <Text style={styles.topUpNote}>{topUpNote}</Text> : null}
 
+            {/* §6.1 — worker-pro upgrade (workers only). */}
+            {isWorker ? (
+              <View style={styles.proCard}>
+                <Text style={styles.proTitle}>★ {i18n.t(L, 'pro.title')}</Text>
+                <Text style={styles.proSubtitle}>{i18n.t(L, 'pro.subtitle')}</Text>
+                {isPro ? (
+                  <Text style={styles.proActive}>✓ {i18n.t(L, 'pro.active')}</Text>
+                ) : (
+                  <Pressable
+                    onPress={goPro}
+                    disabled={goingPro || inCooldown}
+                    style={[styles.proCta, (goingPro || inCooldown) && styles.ctaDisabled]}
+                    accessibilityLabel={i18n.t(L, 'pro.cta')}
+                  >
+                    {goingPro ? (
+                      <ActivityIndicator color={colors.textOnPrimary} />
+                    ) : (
+                      <Text style={styles.proCtaText}>★ {i18n.t(L, 'pro.cta')} · 200 PKR</Text>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+            ) : null}
+
             <View style={styles.divider} />
 
             <Text style={styles.label}>{i18n.t(L, 'wallet.amount')}</Text>
@@ -403,6 +464,25 @@ const useStyles = makeStyles((t) => ({
   topUpBtnText: { color: t.colors.textOnPrimary, fontWeight: '700' },
   topUpNote: { ...t.type.caption, color: t.colors.primary, marginTop: t.spacing.sm },
   divider: { height: 1, backgroundColor: t.colors.border, marginVertical: t.spacing.xl },
+  proCard: {
+    marginTop: t.spacing.lg,
+    backgroundColor: t.colors.accentSoft,
+    borderRadius: t.radius.lg,
+    borderWidth: 1,
+    borderColor: t.colors.accent,
+    padding: t.spacing.lg,
+  },
+  proTitle: { ...t.type.title, color: t.colors.accent },
+  proSubtitle: { ...t.type.caption, color: t.colors.text, marginTop: t.spacing.xs },
+  proCta: {
+    marginTop: t.spacing.md,
+    backgroundColor: t.colors.accent,
+    paddingVertical: t.spacing.md,
+    borderRadius: t.radius.pill,
+    alignItems: 'center',
+  },
+  proCtaText: { ...t.type.label, color: t.colors.textOnPrimary },
+  proActive: { ...t.type.label, color: t.colors.accent, marginTop: t.spacing.md },
   cta: {
     backgroundColor: t.colors.primary,
     paddingVertical: t.spacing.lg,

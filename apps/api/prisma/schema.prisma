@@ -95,6 +95,9 @@ model WorkerProfile {
   cancelLateCount  Int      @default(0) @map("cancel_late_count")
   completionRate   Decimal? @map("completion_rate") @db.Decimal(4, 3)
   responseRate     Decimal? @map("response_rate") @db.Decimal(4, 3)
+  // §6.1 — "Pro" verification tier: paid monthly upgrade (badge + ranking nudge).
+  // When set and in the future, the worker is Pro. null/past = free tier.
+  proUntil         DateTime? @map("pro_until") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   user     User      @relation(fields: [userId], references: [id])

@@ -42,6 +42,7 @@ export type LedgerReason =
   | 'fx_conversion'
   | 'referral_bonus' // platform_revenue → referrer wallet (§10 F7, paid on qualifying referral)
   | 'featured_post' // employer wallet → platform_revenue (§6.1, paid to boost a job post)
+  | 'verification_fee' // user wallet → platform_revenue (§6.1, worker-pro / shop verification)
   | 'topup'; // payment_gateway_clearing → user wallet (§6, PSP-confirmed wallet top-up)
 
 export interface LedgerLeg {

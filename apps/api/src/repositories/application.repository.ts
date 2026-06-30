@@ -66,6 +66,7 @@ export const applicationRepository = {
                 ratingBayesian: true,
                 jobsCompleted: true,
                 bio: true,
+                proUntil: true,
               },
             },
           },
