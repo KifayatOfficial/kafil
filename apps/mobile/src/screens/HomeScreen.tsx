@@ -17,7 +17,7 @@ import { ReferralScreen } from './ReferralScreen';
 import { CommunityScreen } from './CommunityScreen';
 import { ShopsScreen } from './ShopsScreen';
 import { NearbyScreen } from './NearbyScreen';
-import { SkeletonList } from '../components/Skeleton';
+import { StatefulView } from '../components/StatefulView';
 import { SyncIndicator } from '../components/SyncIndicator';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
@@ -193,22 +193,29 @@ export function HomeScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={jobs?.length === 0 ? { flexGrow: 1 } : undefined}
+        contentContainerStyle={jobs === null || jobs.length === 0 || error ? { flexGrow: 1 } : undefined}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
         }
       >
-        {error ? (
-          <Text style={[styles.muted, { color: colors.danger }]}>{error}</Text>
-        ) : jobs === null ? (
-          <SkeletonList rows={5} />
-        ) : jobs.length === 0 ? (
-          <EmptyJobs isEmployer={isEmployer} onPostJob={() => setModal('post')} />
-        ) : (
-          jobs.map((j) => (
+        <StatefulView
+          status={jobs === null ? (error ? 'error' : 'loading') : 'ready'}
+          error={error}
+          onRetry={() => setReloadKey((k) => k + 1)}
+          empty={jobs !== null && jobs.length === 0}
+          emptyTitle={i18n.t(lang, 'empty.no_jobs')}
+          emptyHint={i18n.t(lang, 'empty.jobs_hint')}
+          emptyTips={[
+            `📍 ${i18n.t(lang, 'empty.tip_radius')}`,
+            `🕐 ${i18n.t(lang, 'empty.tip_time')}`,
+            `🔔 ${i18n.t(lang, 'empty.tip_notify')}`,
+          ]}
+          emptyAction={isEmployer ? { label: i18n.t(lang, 'nav.post_job'), onPress: () => setModal('post') } : undefined}
+        >
+          {(jobs ?? []).map((j) => (
             <JobCard key={j.id} job={j} onPress={() => setOpenJobId(j.id)} />
-          ))
-        )}
+          ))}
+        </StatefulView>
       </ScrollView>
     </View>
   );
@@ -243,31 +250,8 @@ function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
   );
 }
 
-// §25.4 — empty states are a UX surface, not an error. Instead of a bare "no jobs"
-// line, give the user a friendly mascot + concrete next steps so a quiet day reads as
-// "nothing yet, here's what to do" rather than "the app is broken".
-function EmptyJobs({ isEmployer, onPostJob }: { isEmployer: boolean; onPostJob: () => void }) {
-  const styles = useStyles();
-  const { lang } = useAuth();
-  return (
-    <View style={styles.emptyWrap}>
-      <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.E_MASCOT} style={styles.emptyMascot} loop />
-      <Text style={styles.emptyTitle}>{i18n.t(lang, 'empty.no_jobs')}</Text>
-      <Text style={styles.emptyHint}>{i18n.t(lang, 'empty.jobs_hint')}</Text>
-      <View style={styles.emptyTips}>
-        <Text style={styles.emptyTip}>📍 {i18n.t(lang, 'empty.tip_radius')}</Text>
-        <Text style={styles.emptyTip}>🕐 {i18n.t(lang, 'empty.tip_time')}</Text>
-        <Text style={styles.emptyTip}>🔔 {i18n.t(lang, 'empty.tip_notify')}</Text>
-      </View>
-      {/* An employer staring at an empty feed is a prompt to post — close the loop. */}
-      {isEmployer ? (
-        <Pressable onPress={onPostJob} style={styles.emptyCta} accessibilityLabel={i18n.t(lang, 'nav.post_job')}>
-          <Text style={styles.emptyCtaText}>{i18n.t(lang, 'nav.post_job')}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
+// Empty/loading/error states are handled by <StatefulView> (§25.4) — the friendly
+// mascot + tips + employer "post a job" on-ramp now lives there, reused across screens.
 
 const useStyles = makeStyles((t) => ({
   root: { flex: 1, backgroundColor: t.colors.bg, paddingHorizontal: t.spacing.lg, paddingTop: 60 },
@@ -312,28 +296,4 @@ const useStyles = makeStyles((t) => ({
   cardFeatured: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
   featuredBadge: { ...t.type.caption, color: t.colors.primary, fontWeight: '700', marginBottom: t.spacing.xs },
   title: { ...t.type.title, color: t.colors.text, marginBottom: t.spacing.xs },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: t.spacing.xxl },
-  emptyMascot: { width: 120, height: 120 },
-  emptyTitle: { ...t.type.h2, color: t.colors.text, marginTop: t.spacing.md, textAlign: 'center' },
-  emptyHint: { ...t.type.body, color: t.colors.textMuted, marginTop: t.spacing.xs, textAlign: 'center' },
-  emptyTips: { marginTop: t.spacing.lg, gap: t.spacing.sm, alignSelf: 'stretch', paddingHorizontal: t.spacing.xl },
-  emptyTip: {
-    ...t.type.body,
-    color: t.colors.text,
-    backgroundColor: t.colors.surface,
-    borderRadius: t.radius.md,
-    borderWidth: 1,
-    borderColor: t.colors.border,
-    paddingVertical: t.spacing.sm,
-    paddingHorizontal: t.spacing.md,
-  },
-  emptyCta: {
-    marginTop: t.spacing.xl,
-    backgroundColor: t.colors.primary,
-    paddingVertical: t.spacing.md,
-    paddingHorizontal: t.spacing.xxl,
-    borderRadius: t.radius.pill,
-    ...t.elevation(2),
-  },
-  emptyCtaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 16 },
 }));

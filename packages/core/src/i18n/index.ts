@@ -15,6 +15,10 @@ type StringKey =
   | 'job.mark_done'
   | 'review.window_closed'
   | 'error.generic'
+  | 'error.title'
+  | 'error.offline_title'
+  | 'error.offline_body'
+  | 'common.retry'
   | 'empty.no_jobs'
   | 'empty.jobs_hint'
   | 'empty.tip_radius'
@@ -190,6 +194,10 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.mark_done': 'بشپړ شو',
     'review.window_closed': 'د کره کتنې وخت پای ته ورسید',
     'error.generic': 'یوه ستونزه پیښه شوه — بیا وڅیړئ',
+    'error.title': 'یوه ستونزه پیښه شوه',
+    'error.offline_title': 'تاسو آف‌لاین یاست',
+    'error.offline_body': 'کله چې بیرته راشئ، موږ به یې بیا هڅه وکړو',
+    'common.retry': 'بیا هڅه وکړئ',
     'empty.no_jobs': 'دلته اوس کار نشته',
     'empty.jobs_hint': 'موږ به تاسو خبر کړو کله چې نوی کار راشي.',
     'empty.tip_radius': 'خپله ساحه پراخه کړئ',
@@ -364,6 +372,10 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.mark_done': 'مکمل ہو گیا',
     'review.window_closed': 'جائزہ کی مدت ختم ہو گئی',
     'error.generic': 'کچھ غلط ہو گیا — دوبارہ کوشش کریں',
+    'error.title': 'کچھ غلط ہو گیا',
+    'error.offline_title': 'آپ آف لائن ہیں',
+    'error.offline_body': 'جب آپ واپس آئیں گے تو ہم دوبارہ کوشش کریں گے',
+    'common.retry': 'دوبارہ کوشش کریں',
     'empty.no_jobs': 'اس وقت کوئی کام نہیں',
     'empty.jobs_hint': 'نیا کام آنے پر ہم آپ کو بتائیں گے۔',
     'empty.tip_radius': 'اپنا علاقہ بڑھائیں',
@@ -538,6 +550,10 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.mark_done': 'Mark done',
     'review.window_closed': 'Review window closed',
     'error.generic': 'Something went wrong — please retry',
+    'error.title': 'Something went wrong',
+    'error.offline_title': 'You’re offline',
+    'error.offline_body': 'We’ll try again when you’re back',
+    'common.retry': 'Try again',
     'empty.no_jobs': 'No jobs in your area yet',
     'empty.jobs_hint': "We'll let you know the moment a new job is posted.",
     'empty.tip_radius': 'Widen your area',
