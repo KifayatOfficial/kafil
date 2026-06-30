@@ -1,6 +1,6 @@
 // Conversations list. Each conversation has the most-recent message preview embedded.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -29,11 +29,18 @@ export function ChatListScreen({ onBack }: Props) {
   const me = session?.userId ?? '';
   const [items, setItems] = useState<Conversation[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     const r = await api.get<{ ok: true; conversations: Conversation[] }>('/api/conversations');
     if (r.success) setItems((r.data as { conversations: Conversation[] }).conversations);
   }, [api]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load().catch(() => undefined);
+    setRefreshing(false);
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -65,7 +72,12 @@ export function ChatListScreen({ onBack }: Props) {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+        }
+      >
         {items === null ? (
           <SkeletonList rows={4} />
         ) : items.length === 0 ? (

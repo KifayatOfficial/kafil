@@ -1,6 +1,6 @@
 // Authenticated home — job feed. Tapping a card opens JobDetailScreen.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -42,12 +42,22 @@ export function HomeScreen() {
   const [modal, setModal] = useState<Modal | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [roles, setRoles] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     const r = await api.get<{ ok: true; jobs: Job[] }>('/api/jobs');
     if (r.success) setJobs((r.data as { jobs: Job[] }).jobs);
     else setError('Failed to load');
   }, [api]);
+
+  // Pull-to-refresh — on flaky networks users need an explicit "check again" instead of
+  // assuming the feed auto-updates. Clears any prior error so a recovered network heals.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setError(null);
+    await load().catch(() => setError('Failed to load'));
+    setRefreshing(false);
+  }, [load]);
 
   useEffect(() => {
     (async () => {
@@ -147,13 +157,19 @@ export function HomeScreen() {
         </View>
       ) : null}
 
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={jobs?.length === 0 ? { flexGrow: 1 } : undefined}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+        }
+      >
         {error ? (
           <Text style={[styles.muted, { color: colors.danger }]}>{error}</Text>
         ) : jobs === null ? (
           <SkeletonList rows={5} />
         ) : jobs.length === 0 ? (
-          <Text style={styles.muted}>{i18n.t(lang, 'empty.no_jobs')}</Text>
+          <EmptyJobs isEmployer={isEmployer} onPostJob={() => setModal('post')} />
         ) : (
           jobs.map((j) => (
             <JobCard key={j.id} job={j} onPress={() => setOpenJobId(j.id)} />
@@ -190,6 +206,32 @@ function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
         </Text>
       </Animated.View>
     </Pressable>
+  );
+}
+
+// §25.4 — empty states are a UX surface, not an error. Instead of a bare "no jobs"
+// line, give the user a friendly mascot + concrete next steps so a quiet day reads as
+// "nothing yet, here's what to do" rather than "the app is broken".
+function EmptyJobs({ isEmployer, onPostJob }: { isEmployer: boolean; onPostJob: () => void }) {
+  const styles = useStyles();
+  const { lang } = useAuth();
+  return (
+    <View style={styles.emptyWrap}>
+      <KafilLottie source={mascotIdle} motionClass={motion.MotionClass.E_MASCOT} style={styles.emptyMascot} loop />
+      <Text style={styles.emptyTitle}>{i18n.t(lang, 'empty.no_jobs')}</Text>
+      <Text style={styles.emptyHint}>{i18n.t(lang, 'empty.jobs_hint')}</Text>
+      <View style={styles.emptyTips}>
+        <Text style={styles.emptyTip}>📍 {i18n.t(lang, 'empty.tip_radius')}</Text>
+        <Text style={styles.emptyTip}>🕐 {i18n.t(lang, 'empty.tip_time')}</Text>
+        <Text style={styles.emptyTip}>🔔 {i18n.t(lang, 'empty.tip_notify')}</Text>
+      </View>
+      {/* An employer staring at an empty feed is a prompt to post — close the loop. */}
+      {isEmployer ? (
+        <Pressable onPress={onPostJob} style={styles.emptyCta} accessibilityLabel={i18n.t(lang, 'nav.post_job')}>
+          <Text style={styles.emptyCtaText}>{i18n.t(lang, 'nav.post_job')}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -236,4 +278,28 @@ const useStyles = makeStyles((t) => ({
   cardFeatured: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
   featuredBadge: { ...t.type.caption, color: t.colors.primary, fontWeight: '700', marginBottom: t.spacing.xs },
   title: { ...t.type.title, color: t.colors.text, marginBottom: t.spacing.xs },
+  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: t.spacing.xxl },
+  emptyMascot: { width: 120, height: 120 },
+  emptyTitle: { ...t.type.h2, color: t.colors.text, marginTop: t.spacing.md, textAlign: 'center' },
+  emptyHint: { ...t.type.body, color: t.colors.textMuted, marginTop: t.spacing.xs, textAlign: 'center' },
+  emptyTips: { marginTop: t.spacing.lg, gap: t.spacing.sm, alignSelf: 'stretch', paddingHorizontal: t.spacing.xl },
+  emptyTip: {
+    ...t.type.body,
+    color: t.colors.text,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    paddingVertical: t.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+  },
+  emptyCta: {
+    marginTop: t.spacing.xl,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
+    paddingHorizontal: t.spacing.xxl,
+    borderRadius: t.radius.pill,
+    ...t.elevation(2),
+  },
+  emptyCtaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 16 },
 }));

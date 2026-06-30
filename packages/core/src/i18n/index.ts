@@ -16,6 +16,10 @@ type StringKey =
   | 'review.window_closed'
   | 'error.generic'
   | 'empty.no_jobs'
+  | 'empty.jobs_hint'
+  | 'empty.tip_radius'
+  | 'empty.tip_time'
+  | 'empty.tip_notify'
   | 'safety.report'
   | 'safety.report_title'
   | 'safety.report_user'
@@ -134,7 +138,11 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.mark_done': 'بشپړ شو',
     'review.window_closed': 'د کره کتنې وخت پای ته ورسید',
     'error.generic': 'یوه ستونزه پیښه شوه — بیا وڅیړئ',
-    'empty.no_jobs': 'دلته اوس کار نشته — موږ به تاسو خبر کړو',
+    'empty.no_jobs': 'دلته اوس کار نشته',
+    'empty.jobs_hint': 'موږ به تاسو خبر کړو کله چې نوی کار راشي.',
+    'empty.tip_radius': 'خپله ساحه پراخه کړئ',
+    'empty.tip_time': 'ماښام بیا وګورئ',
+    'empty.tip_notify': 'کله چې کار راشي خبر به شئ',
     'safety.report': 'راپور ورکړئ',
     'safety.report_title': 'څه شی غلط دی؟',
     'safety.report_user': 'د دې کس راپور ورکړئ',
@@ -252,7 +260,11 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.mark_done': 'مکمل ہو گیا',
     'review.window_closed': 'جائزہ کی مدت ختم ہو گئی',
     'error.generic': 'کچھ غلط ہو گیا — دوبارہ کوشش کریں',
-    'empty.no_jobs': 'اس وقت کوئی کام نہیں ہے — ہم آپ کو بتائیں گے',
+    'empty.no_jobs': 'اس وقت کوئی کام نہیں',
+    'empty.jobs_hint': 'نیا کام آنے پر ہم آپ کو بتائیں گے۔',
+    'empty.tip_radius': 'اپنا علاقہ بڑھائیں',
+    'empty.tip_time': 'شام کو دوبارہ دیکھیں',
+    'empty.tip_notify': 'کام آنے پر اطلاع پائیں',
     'safety.report': 'رپورٹ کریں',
     'safety.report_title': 'کیا غلط ہے؟',
     'safety.report_user': 'اس شخص کی رپورٹ کریں',
@@ -370,7 +382,11 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'job.mark_done': 'Mark done',
     'review.window_closed': 'Review window closed',
     'error.generic': 'Something went wrong — please retry',
-    'empty.no_jobs': "No jobs in your area yet — we'll let you know",
+    'empty.no_jobs': 'No jobs in your area yet',
+    'empty.jobs_hint': "We'll let you know the moment a new job is posted.",
+    'empty.tip_radius': 'Widen your area',
+    'empty.tip_time': 'Check back this evening',
+    'empty.tip_notify': "Get notified when work appears",
     'safety.report': 'Report',
     'safety.report_title': "What's wrong?",
     'safety.report_user': 'Report this person',

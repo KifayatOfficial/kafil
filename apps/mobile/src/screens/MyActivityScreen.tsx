@@ -4,7 +4,7 @@
 // Tabbed if the user holds both roles.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, type Lang } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -50,6 +50,7 @@ export function MyActivityScreen({ onBack }: Props) {
   const [apps, setApps] = useState<Application[]>([]);
   const [jobs, setJobs] = useState<JobMine[]>([]);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Pick default tab from roles.
   useEffect(() => {
@@ -81,6 +82,13 @@ export function MyActivityScreen({ onBack }: Props) {
     if (tab === 'worker' && roles.includes('worker')) void loadApps();
     if (tab === 'employer' && roles.includes('employer')) void loadJobs();
   }, [tab, roles, loadApps, loadJobs]);
+
+  // Pull-to-refresh re-runs the active tab's loader.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await (tab === 'worker' ? loadApps() : loadJobs()).catch(() => undefined);
+    setRefreshing(false);
+  }, [tab, loadApps, loadJobs]);
 
   if (openJobId) {
     return (
@@ -114,7 +122,12 @@ export function MyActivityScreen({ onBack }: Props) {
         </View>
       ) : null}
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+        }
+      >
         {tab === 'worker' ? (
           appsLoading ? (
             <SkeletonList rows={3} />
