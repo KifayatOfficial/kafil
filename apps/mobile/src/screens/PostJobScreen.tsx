@@ -46,6 +46,14 @@ interface Location {
   district: string | null;
 }
 
+interface RateInsight {
+  hasData: boolean;
+  sampleSize: number;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+}
+
 // Until we wire a real location picker (§2.2 / §25), employers default to their own
 // recorded base location. For demo seeding we use the well-known seeded id.
 const DEMO_LOCATION_ID = '00000000-0000-0000-0000-000000000001';
@@ -79,6 +87,7 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
   const [durationDays, setDurationDays] = useState('');
   const [specialties, setSpecialties] = useState<SpecialtyRow[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [insight, setInsight] = useState<RateInsight | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -86,6 +95,24 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
       if (r.success) setSpecialties((r.data as { specialties: SpecialtyRow[] }).specialties);
     })().catch(() => undefined);
   }, [api]);
+
+  // §26/M27 — fetch the market rate band when exactly ONE specialty is picked (a mixed
+  // pick has no single market). Clears otherwise so we never show a stale band.
+  useEffect(() => {
+    if (picked.size !== 1) {
+      setInsight(null);
+      return;
+    }
+    const [only] = Array.from(picked);
+    let cancelled = false;
+    (async () => {
+      const r = await api.get<{ ok: true; insight: RateInsight }>(`/api/specialties/${only}/rate-insight`);
+      if (!cancelled && r.success) setInsight((r.data as { insight: RateInsight }).insight);
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [api, picked]);
 
   const togglePick = (id: string) => {
     void haptic(motion.hapticToken.TAP_LIGHT);
@@ -98,6 +125,14 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
   };
 
   const rateNum = Number.parseInt(rate, 10);
+  // §26/M27 — below-market only fires once the employer typed a positive rate AND we
+  // have a real band; informational, never blocks the post.
+  const belowMarket =
+    insight?.hasData === true &&
+    insight.p25 != null &&
+    Number.isFinite(rateNum) &&
+    rateNum > 0 &&
+    rateNum < insight.p25;
   const headcountNum = Number.parseInt(headcount, 10);
   const durationNum = durationDays ? Number.parseInt(durationDays, 10) : null;
   const canSubmit =
@@ -199,8 +234,8 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
               <TextInput
                 value={rate}
                 onChangeText={setRate}
-                style={styles.input}
-                placeholder="3500"
+                style={[styles.input, belowMarket && styles.inputWarn]}
+                placeholder={insight?.median ? String(insight.median) : '3500'}
                 keyboardType="number-pad"
                 maxLength={6}
               />
@@ -218,6 +253,16 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
               />
             </View>
           </View>
+
+          {/* §26/M27 — market band + soft below-market warning. KAFIL informs, never enforces. */}
+          {insight?.hasData && insight.p25 != null && insight.p75 != null ? (
+            <Text style={styles.rateMarket}>
+              {i18n.t(lang, 'rate.market')}: {insight.p25}–{insight.p75} PKR
+            </Text>
+          ) : null}
+          {belowMarket ? (
+            <Text style={styles.rateWarn}>⚠ {i18n.t(lang, 'rate.below_market')}</Text>
+          ) : null}
 
           <Text style={styles.label}>Duration in days (optional)</Text>
           <TextInput
@@ -299,6 +344,9 @@ const useStyles = makeStyles((t) => ({
     color: t.colors.text,
   },
   multi: { textAlignVertical: 'top' },
+  inputWarn: { borderColor: t.colors.warning },
+  rateMarket: { ...t.type.caption, color: t.colors.textMuted, marginTop: t.spacing.sm },
+  rateWarn: { ...t.type.caption, color: t.colors.warning, marginTop: t.spacing.xs },
   row: { flexDirection: 'row' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: t.spacing.sm },
   tile: {

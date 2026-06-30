@@ -95,6 +95,8 @@ type StringKey =
   | 'sync.syncing'
   | 'sync.synced'
   | 'sync.failed'
+  | 'rate.market'
+  | 'rate.below_market'
   | 'chat.no_messages'
   | 'chat.sending'
   | 'chat.send_failed'
@@ -218,6 +220,8 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'sync.syncing': 'همغږي کیږي',
     'sync.synced': 'خوندي شو',
     'sync.failed': 'ونه لېږل شول — ټک ووهئ',
+    'rate.market': 'د دې کار بازاري نرخ',
+    'rate.below_market': 'دا نرخ د بازار څخه ټیټ دی — ښه کارګران به یې ونه مني',
     'chat.no_messages': 'تر اوسه پیغام نشته',
     'chat.sending': 'لېږل کیږي…',
     'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
@@ -340,6 +344,8 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'sync.syncing': 'سنک ہو رہا ہے',
     'sync.synced': 'محفوظ',
     'sync.failed': 'نہیں بھیجا گیا — ٹیپ کریں',
+    'rate.market': 'اس کام کا بازاری ریٹ',
+    'rate.below_market': 'یہ ریٹ بازار سے کم ہے — اچھے کارکن شاید درخواست نہ دیں',
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
     'chat.sending': 'بھیجا جا رہا ہے…',
     'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
@@ -462,6 +468,8 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'sync.syncing': 'Syncing',
     'sync.synced': 'Saved',
     'sync.failed': "Didn't send — tap",
+    'rate.market': 'Market rate for this work',
+    'rate.below_market': 'This rate is below market — quality workers may not apply',
     'chat.no_messages': 'No messages yet',
     'chat.sending': 'Sending…',
     'chat.send_failed': "Didn't send — tap to retry",
