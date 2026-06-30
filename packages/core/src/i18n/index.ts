@@ -19,6 +19,7 @@ type StringKey =
   | 'error.offline_title'
   | 'error.offline_body'
   | 'common.retry'
+  | 'coach.first_apply'
   | 'empty.no_jobs'
   | 'empty.jobs_hint'
   | 'empty.tip_radius'
@@ -198,6 +199,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'error.offline_title': 'تاسو آف‌لاین یاست',
     'error.offline_body': 'کله چې بیرته راشئ، موږ به یې بیا هڅه وکړو',
     'common.retry': 'بیا هڅه وکړئ',
+    'coach.first_apply': 'یوه دنده ووهئ چې یې وګورئ او غوښتنه وکړئ',
     'empty.no_jobs': 'دلته اوس کار نشته',
     'empty.jobs_hint': 'موږ به تاسو خبر کړو کله چې نوی کار راشي.',
     'empty.tip_radius': 'خپله ساحه پراخه کړئ',
@@ -376,6 +378,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'error.offline_title': 'آپ آف لائن ہیں',
     'error.offline_body': 'جب آپ واپس آئیں گے تو ہم دوبارہ کوشش کریں گے',
     'common.retry': 'دوبارہ کوشش کریں',
+    'coach.first_apply': 'دیکھنے اور درخواست دینے کے لیے کسی کام پر ٹیپ کریں',
     'empty.no_jobs': 'اس وقت کوئی کام نہیں',
     'empty.jobs_hint': 'نیا کام آنے پر ہم آپ کو بتائیں گے۔',
     'empty.tip_radius': 'اپنا علاقہ بڑھائیں',
@@ -554,6 +557,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'error.offline_title': 'You’re offline',
     'error.offline_body': 'We’ll try again when you’re back',
     'common.retry': 'Try again',
+    'coach.first_apply': 'Tap a job to see it and apply',
     'empty.no_jobs': 'No jobs in your area yet',
     'empty.jobs_hint': "We'll let you know the moment a new job is posted.",
     'empty.tip_radius': 'Widen your area',

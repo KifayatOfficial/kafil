@@ -19,6 +19,7 @@ import { ShopsScreen } from './ShopsScreen';
 import { NearbyScreen } from './NearbyScreen';
 import { StatefulView } from '../components/StatefulView';
 import { SyncIndicator } from '../components/SyncIndicator';
+import { CoachMark, useCoachMark } from '../mascot';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -46,6 +47,13 @@ export function HomeScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [roles, setRoles] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+
+  // First-run coaching: once a worker's feed has loaded with jobs, point them at tapping
+  // one. Shows at most once ever (persisted), and never to employers (they get the
+  // post-job on-ramp instead). No modal open so it doesn't fight a sub-screen.
+  const isWorker = roles.includes('worker');
+  const feedReadyWithJobs = jobs !== null && jobs.length > 0 && modal === null && !openJobId;
+  const firstApplyCoach = useCoachMark('home.first_apply', isWorker && feedReadyWithJobs);
 
   const load = useCallback(async () => {
     const r = await api.get<{ ok: true; jobs: Job[] }>('/api/jobs');
@@ -217,6 +225,10 @@ export function HomeScreen() {
           ))}
         </StatefulView>
       </ScrollView>
+
+      {firstApplyCoach.show ? (
+        <CoachMark message={i18n.t(lang, 'coach.first_apply')} onDismiss={firstApplyCoach.dismiss} />
+      ) : null}
     </View>
   );
 }
