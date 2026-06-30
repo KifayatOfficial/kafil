@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { OutboxProvider } from './src/outbox/OutboxContext';
 import { VoiceProvider } from './src/voice/VoiceContext';
 import { ThemeProvider, useTheme } from './src/theme';
+import { MomentProvider } from './src/moments';
 import { PhoneEntryScreen } from './src/screens/PhoneEntryScreen';
 import { OtpScreen } from './src/screens/OtpScreen';
 import { RoleScreen } from './src/screens/RoleScreen';
@@ -28,9 +29,12 @@ export default function App() {
       <AuthProvider>
         <VoiceProvider>
           <OutboxProvider>
-            {/* StatusBar bar style follows the resolved scheme (light text on dark bg). */}
-            <ThemedStatusBar />
-            <Flow />
+            {/* MomentProvider hosts the Class-D celebration overlay above every screen. */}
+            <MomentProvider>
+              {/* StatusBar bar style follows the resolved scheme (light text on dark bg). */}
+              <ThemedStatusBar />
+              <Flow />
+            </MomentProvider>
           </OutboxProvider>
         </VoiceProvider>
       </AuthProvider>

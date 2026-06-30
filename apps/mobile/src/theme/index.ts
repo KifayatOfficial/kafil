@@ -3,3 +3,4 @@ export { ThemeProvider, useTheme, type Theme, type ThemeMode } from './ThemeCont
 export { makeStyles } from './makeStyles';
 export { ThemeToggle } from './ThemeToggle';
 export { elevation, typeScale, type ElevationLevel } from './tokens';
+export { useReduceMotion } from './useReduceMotion';

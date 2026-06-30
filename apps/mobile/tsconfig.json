@@ -2,7 +2,16 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "jsx": "react-native"
+    "jsx": "react-native",
+    // Monorepo hoisting puts @types/react@19 (wanted by apps/api + apps/web, both Next.js)
+    // at the repo root. This app is RN 0.74 / React 18, and loading BOTH react type
+    // versions into one program makes every Animated.View/LottieView fail as "not a valid
+    // JSX component". Pin react types to this app's nested v18 copy so only one wins.
+    "baseUrl": ".",
+    "paths": {
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }

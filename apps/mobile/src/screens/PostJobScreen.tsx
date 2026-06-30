@@ -28,6 +28,7 @@ import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
 import { makeStyles, useTheme } from '../theme';
+import { useMoment } from '../moments';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -77,6 +78,7 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
   const { api, lang } = useAuth();
   const styles = useStyles();
   const { colors } = useTheme();
+  const { celebrate } = useMoment();
   const [phase, setPhase] = useState<Phase>('editing');
   const [error, setError] = useState<string | null>(null);
 
@@ -171,7 +173,9 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
     );
     if (r.success) {
       const jobId = (r.data as { value: { jobId: string } }).value.jobId;
-      void haptic(motion.hapticToken.SUCCESS);
+      // §27 Class-D — celebrate the post (haptic crescendo + confetti overlay). The
+      // engine degrades to a calm fade under reduce-motion.
+      celebrate('job_posted');
       setPhase('posted');
       setTimeout(() => onPosted(jobId), 1500);
     } else {
