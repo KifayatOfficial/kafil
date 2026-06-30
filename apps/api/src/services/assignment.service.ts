@@ -22,6 +22,17 @@ import { assignmentRepository } from '../repositories/assignment.repository';
 import { conversationRepository } from '../repositories/conversation.repository';
 import { reputationService } from './reputation.service';
 import { referralService } from './referral.service';
+import { notificationsService } from './notifications.service';
+
+// §11 — server-side notification copy. The title/body the user sees is rendered by the
+// CLIENT from the typed `type` for full localization; these are the safe English
+// fallbacks the notification row stores (and what the console push prints in dev).
+const notifyStrings = {
+  hiredTitle: "You're hired!",
+  hiredBody: 'An employer accepted your application. Open KAFIL to confirm.',
+  newApplicantTitle: 'New applicant',
+  newApplicantBody: 'Someone applied to your job. Tap to review.',
+};
 
 export const assignmentService = {
   /** Employer accepts an application → slot fill + create assignment, all atomic. */
@@ -167,6 +178,24 @@ export const assignmentService = {
 
         return { assignmentId: assignment.id, conversationId: conversation.id };
       });
+
+      // §11 — tell the worker they're hired. Awaited but non-fatal (same rationale as
+      // the reputation/referral post-commit hooks): the acceptance is already
+      // committed, so a notification failure is logged and swallowed, never rolled back.
+      try {
+        await notificationsService.send({
+          userId: application.workerId,
+          type: 'application.accepted',
+          priority: 'transactional',
+          title: notifyStrings.hiredTitle,
+          body: notifyStrings.hiredBody,
+          refType: 'assignment',
+          refId: result.assignmentId,
+        });
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[assignment] hire notification failed:', e instanceof Error ? e.message : String(e));
+      }
 
       return ok(result);
     } catch (e) {
