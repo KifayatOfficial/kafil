@@ -35,6 +35,7 @@ interface Applicant {
     displayName: string;
     photoUrl: string | null;
     kycLevel: number;
+    devices: Array<{ lastSeenAt: string | null }>;
     workerProfile: {
       ratingBayesian: string | number | null;
       jobsCompleted: number;
@@ -260,6 +261,41 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
   );
 }
 
+// §25.2 — a small pill. Border + label (never colour alone, for accessibility).
+function Badge({ label, tone }: { label: string; tone: string }) {
+  const styles = useStyles();
+  return (
+    <View style={[styles.badge, { borderColor: tone }]}>
+      <Text style={[styles.badgeText, { color: tone }]}>{label}</Text>
+    </View>
+  );
+}
+
+// "Last active" recency, bucketed (online now / today / this week / older). A green dot
+// for "now" is the single strongest at-a-glance availability signal (§25.2).
+function LastActiveBadge({ lastSeenAt, lang }: { lastSeenAt: string | null; lang: import('@kafil/core').Lang }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  if (!lastSeenAt) return null;
+  const ageMs = Date.now() - new Date(lastSeenAt).getTime();
+  if (!Number.isFinite(ageMs) || ageMs < 0) return null;
+  const min = ageMs / 60_000;
+  let key: 'badge.online_now' | 'badge.active_today' | 'badge.active_week' | null;
+  let live = false;
+  if (min < 10) { key = 'badge.online_now'; live = true; }
+  else if (min < 60 * 24) key = 'badge.active_today';
+  else if (min < 60 * 24 * 7) key = 'badge.active_week';
+  else key = null; // older than a week → don't advertise staleness
+  if (!key) return null;
+  const tone = live ? colors.success : colors.textMuted;
+  return (
+    <View style={[styles.badge, { borderColor: tone }]}>
+      {live ? <View style={[styles.liveDot, { backgroundColor: tone }]} /> : null}
+      <Text style={[styles.badgeText, { color: tone }]}>{i18n.t(lang, key)}</Text>
+    </View>
+  );
+}
+
 function ApplicantCard({
   app,
   lang,
@@ -281,14 +317,30 @@ function ApplicantCard({
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const wp = app.worker.workerProfile;
   const rating = wp?.ratingBayesian ? Number(wp.ratingBayesian) : null;
+  const lastSeen = app.worker.devices?.[0]?.lastSeenAt ?? null;
   return (
     <View style={styles.card}>
       <Text style={styles.workerName}>{app.worker.displayName}</Text>
       <Text style={styles.muted}>
         {wp?.jobsCompleted ?? 0} job{wp?.jobsCompleted === 1 ? '' : 's'} completed
         {rating != null && rating > 0 ? ` · ⭐ ${rating.toFixed(1)}` : ''}
-        {' · KYC L'}{app.worker.kycLevel}
       </Text>
+
+      {/* §25.2 — narrow trust signals beat one fuzzy "verified": phone/CNIC level +
+          a live "last active" pill that the employer reads at a glance. */}
+      <View style={styles.badgeRow}>
+        <LastActiveBadge lastSeenAt={lastSeen} lang={lang} />
+        {app.worker.kycLevel >= 1 ? (
+          <Badge label={i18n.t(lang, 'badge.phone_verified')} tone={colors.primary} />
+        ) : null}
+        {app.worker.kycLevel >= 2 ? (
+          <Badge label={i18n.t(lang, 'badge.cnic_verified')} tone={colors.primary} />
+        ) : null}
+        {(wp?.jobsCompleted ?? 0) >= 10 ? (
+          <Badge label={i18n.t(lang, 'badge.experienced')} tone={colors.accent} />
+        ) : null}
+      </View>
+
       {app.message ? <Text style={styles.message}>"{app.message}"</Text> : null}
       {app.proposedRatePkr != null ? (
         <Text style={styles.muted}>Proposed rate: {app.proposedRatePkr} PKR/day</Text>
@@ -381,6 +433,18 @@ const useStyles = makeStyles((t) => ({
     ...t.elevation(1),
   },
   workerName: { ...t.type.title, color: t.colors.text },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.xs, marginTop: t.spacing.sm },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: t.radius.pill,
+    paddingHorizontal: t.spacing.sm,
+    paddingVertical: 2,
+  },
+  badgeText: { ...t.type.micro },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
   message: { ...t.type.body, color: t.colors.text, marginTop: t.spacing.sm, fontStyle: 'italic' },
   acceptBtn: {
     backgroundColor: t.colors.primary,

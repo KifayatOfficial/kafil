@@ -53,6 +53,14 @@ export const applicationRepository = {
             displayName: true,
             photoUrl: true,
             kycLevel: true,
+            // §25.2 — "last active" is the single biggest match-rate booster in informal
+            // labor markets. Surface the worker's most-recent device heartbeat (set on
+            // auth/refresh) so the employer can see who's actually around right now.
+            devices: {
+              select: { lastSeenAt: true },
+              orderBy: { lastSeenAt: 'desc' },
+              take: 1,
+            },
             workerProfile: {
               select: {
                 ratingBayesian: true,

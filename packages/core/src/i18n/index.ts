@@ -97,6 +97,12 @@ type StringKey =
   | 'sync.failed'
   | 'rate.market'
   | 'rate.below_market'
+  | 'badge.phone_verified'
+  | 'badge.cnic_verified'
+  | 'badge.experienced'
+  | 'badge.online_now'
+  | 'badge.active_today'
+  | 'badge.active_week'
   | 'chat.no_messages'
   | 'chat.sending'
   | 'chat.send_failed'
@@ -222,6 +228,12 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'sync.failed': 'ونه لېږل شول — ټک ووهئ',
     'rate.market': 'د دې کار بازاري نرخ',
     'rate.below_market': 'دا نرخ د بازار څخه ټیټ دی — ښه کارګران به یې ونه مني',
+    'badge.phone_verified': '✓ فون تصدیق',
+    'badge.cnic_verified': '✓ شناخت تصدیق',
+    'badge.experienced': 'تجربه‌کار',
+    'badge.online_now': 'اوس آنلاین',
+    'badge.active_today': 'نن فعال',
+    'badge.active_week': 'دا اونۍ فعال',
     'chat.no_messages': 'تر اوسه پیغام نشته',
     'chat.sending': 'لېږل کیږي…',
     'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
@@ -346,6 +358,12 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'sync.failed': 'نہیں بھیجا گیا — ٹیپ کریں',
     'rate.market': 'اس کام کا بازاری ریٹ',
     'rate.below_market': 'یہ ریٹ بازار سے کم ہے — اچھے کارکن شاید درخواست نہ دیں',
+    'badge.phone_verified': '✓ فون تصدیق شدہ',
+    'badge.cnic_verified': '✓ شناختی کارڈ تصدیق شدہ',
+    'badge.experienced': 'تجربہ کار',
+    'badge.online_now': 'ابھی آن لائن',
+    'badge.active_today': 'آج فعال',
+    'badge.active_week': 'اس ہفتے فعال',
     'chat.no_messages': 'ابھی تک کوئی پیغام نہیں',
     'chat.sending': 'بھیجا جا رہا ہے…',
     'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
@@ -470,6 +488,12 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'sync.failed': "Didn't send — tap",
     'rate.market': 'Market rate for this work',
     'rate.below_market': 'This rate is below market — quality workers may not apply',
+    'badge.phone_verified': '✓ Phone verified',
+    'badge.cnic_verified': '✓ CNIC verified',
+    'badge.experienced': 'Experienced',
+    'badge.online_now': 'Online now',
+    'badge.active_today': 'Active today',
+    'badge.active_week': 'Active this week',
     'chat.no_messages': 'No messages yet',
     'chat.sending': 'Sending…',
     'chat.send_failed': "Didn't send — tap to retry",
