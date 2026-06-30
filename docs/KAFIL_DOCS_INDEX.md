@@ -24,6 +24,7 @@
 | 3 | `KAFIL_AUDIT_AND_GAP_ANALYSIS.md` | v1.0 | Pakistan legal/tax, regional GTM, KPI taxonomy, research | Payment flow (Gap 1) + finances (Gap 5) overturned by #5 |
 | 4 | `KAFIL_QUICK_REFERENCE.md` | v1.0 | Navigation aid for the business docs | Now points here; "3 docs" → 5 |
 | 5 | **`KAFIL_SPEC_v1.1_ADDENDUM.md`** | **v1.1** | **Data model, state machines, money, security, build order** | **Engineering source of truth** |
+| 6 | `KAFIL_SCALE_AND_EXPERIENCE_ROADMAP.md` | v1.2 | Experience, navigation, motion, real-time, and 1M-scale readiness | Roadmap; subordinate to #5 on data/money/state |
 | 0 | `KAFIL_DOCS_INDEX.md` (this file) | — | Hierarchy, precedence, reading order | — |
 
 ---
