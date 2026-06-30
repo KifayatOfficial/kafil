@@ -61,6 +61,11 @@ export async function cleanupTestData() {
   await prisma.conversationParticipant.deleteMany({});
   await prisma.conversation.deleteMany({});
   await prisma.referral.deleteMany({}); // FK on users (referrer + referred)
+  // Community: comments → posts → group_members → groups (FK chain + users).
+  await prisma.comment.deleteMany({});
+  await prisma.post.deleteMany({});
+  await prisma.groupMember.deleteMany({});
+  await prisma.group.deleteMany({});
   await prisma.review.deleteMany({}); // reviews FK assignments — must precede
   await prisma.workLog.deleteMany({});
   await prisma.disputeEvidence.deleteMany({});

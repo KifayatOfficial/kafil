@@ -68,6 +68,10 @@ model User {
   devices          Device[]
   workLogEntries   WorkLog[]            @relation("LogAuthor")
   workLogConfirms  WorkLog[]            @relation("LogConfirmer")
+  groupsCreated    Group[]              @relation("GroupCreator")
+  groupMemberships GroupMember[]
+  postsAuthored    Post[]               @relation("PostAuthor")
+  commentsAuthored Comment[]            @relation("CommentAuthor")
 
   @@map("users")
 }
@@ -407,31 +411,53 @@ model Shop {
 model Group {
   id         String   @id @default(uuid()) @db.Uuid
   name       String   @db.VarChar(200)
+  description String?
   category   String?  @db.VarChar(20)
   locationId String?  @map("location_id") @db.Uuid
   createdBy  String   @map("created_by") @db.Uuid
   status     String   @default("active") @db.VarChar(16)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  location Location? @relation(fields: [locationId], references: [id])
+  location Location?     @relation(fields: [locationId], references: [id])
+  creator  User          @relation("GroupCreator", fields: [createdBy], references: [id])
   posts    Post[]
+  members  GroupMember[]
 
+  @@index([status, locationId])
   @@map("groups")
+}
+
+model GroupMember {
+  groupId  String   @map("group_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     String   @default("member") @db.VarChar(12) // member | admin
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
 }
 
 model Post {
   id        String   @id @default(uuid()) @db.Uuid
   groupId   String   @map("group_id") @db.Uuid
   authorId  String   @map("author_id") @db.Uuid
+  kind      String   @default("discussion") @db.VarChar(20) // discussion | announcement | offer | request
   body      String?
   images    Json     @default("[]")
   pinned    Boolean  @default(false)
+  commentCount Int   @default(0) @map("comment_count")
   status    String   @default("visible") @db.VarChar(16)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author   User      @relation("PostAuthor", fields: [authorId], references: [id])
   comments Comment[]
 
+  @@index([groupId, status, pinned, createdAt])
   @@map("posts")
 }
 
@@ -443,8 +469,10 @@ model Comment {
   status    String   @default("visible") @db.VarChar(16)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation("CommentAuthor", fields: [authorId], references: [id])
 
+  @@index([postId, status, createdAt])
   @@map("comments")
 }
 
