@@ -94,8 +94,24 @@ export const color = {
   badgeLocal: '#7E2EB2',
 } as const;
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 40 } as const;
-export const radius = { sm: 6, md: 10, lg: 16, pill: 999 } as const;
+export const spacing = {
+  none: 0,
+  xxs: 2,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 40,
+  xxxl: 64,
+} as const;
+export const radius = { xs: 4, sm: 6, md: 10, lg: 16, xl: 24, pill: 999 } as const;
+
+// Border widths — hairline is sub-pixel-aware on mobile (consumers can divide by PixelRatio).
+export const borderWidth = { hairline: 1, thin: 1.5, thick: 2 } as const;
+
+// Opacity ramp for disabled/pressed/scrim layering — keeps alpha consistent across UIs.
+export const opacity = { disabled: 0.4, muted: 0.6, pressed: 0.85, scrim: 0.45 } as const;
 
 // §27.9 — semantic theme palettes (light + dark). The flat `color` map above stays the
 // brand contract (and web's CSS-var source); these resolve those brand hues into the
@@ -112,33 +128,70 @@ export interface ThemePalette {
   surface: string; // cards, inputs, tiles
   surfaceElevated: string; // surfaces that float above other surfaces (menus, FAB)
   surfaceSunken: string; // wells / track backgrounds / inset rows
+  surfaceHover: string; // hover/pressed wash on an interactive surface (web hover, RN pressed)
+  // Neutral ramp — a continuous gray scale tuned to the warm brand (not pure gray). Use
+  // these when a semantic role doesn't fit (dividers between tiers, subtle fills, charts).
+  // n0 = closest to bg, n900 = closest to text. Lets UIs build depth without inventing hex.
+  neutral0: string;
+  neutral50: string;
+  neutral100: string;
+  neutral200: string;
+  neutral300: string;
+  neutral400: string;
+  neutral500: string;
+  neutral600: string;
+  neutral700: string;
+  neutral800: string;
+  neutral900: string;
   // Text tiers.
   text: string; // primary content
   textMuted: string; // secondary / helper text (replaces ad-hoc #666/#888)
   textFaint: string; // tertiary / disabled / timestamps
   textOnPrimary: string; // text/icon sitting on a primary-filled surface
+  textOnAccent: string; // text/icon on an accent-filled surface
+  textLink: string; // inline tappable text
   // Lines & separators.
   border: string; // hairline dividers, card outlines
   borderStrong: string; // emphasized outlines (focused input, selected tile)
-  // Brand roles.
+  borderFocus: string; // focus ring / active input outline
+  // Brand roles. Each role has: base, soft (tinted fill), and strong (pressed/active) variants.
   primary: string; // forest green — primary actions, trust
   primarySoft: string; // tinted fill behind primary (chips, soft buttons)
+  primaryStrong: string; // pressed / active primary
   accent: string; // ochre warmth
   accentSoft: string; // tinted ochre fill
+  accentStrong: string;
   danger: string;
   dangerSoft: string; // tinted danger fill (destructive backgrounds)
+  dangerStrong: string;
   warning: string;
   warningSoft: string;
+  warningStrong: string;
   success: string; // semantic success (maps to primary green family)
   successSoft: string;
+  successStrong: string;
+  info: string; // teal/blue — neutral informational (banners, sync, tips)
+  infoSoft: string;
+  infoStrong: string;
   // Utility.
   overlay: string; // modal scrim
-  skeleton: string; // loading shimmer block
+  skeleton: string; // loading shimmer block base
+  skeletonHighlight: string; // shimmer sweep highlight (gradient endpoint)
+  shadow: string; // base shadow color for elevation
+  // Gradients — pairs consumers can feed into LinearGradient (mobile) / linear-gradient (web).
+  // Each is [from, to]; brand gradient is the signature forest→ochre sweep.
+  gradientBrand: readonly [string, string];
+  gradientSurface: readonly [string, string]; // subtle top-light card sheen
   // Trust-band badge hues (shared; §25.2 pairs them with shape + label, never color alone).
   badgePhone: string;
   badgeCnic: string;
   badgeJobs: string;
   badgeLocal: string;
+  // Domain accent hues — give each platform layer (§ marketplace/community/directory) a
+  // recognizable tint so Jobs / Shops / Community read as distinct without extra chrome.
+  domainJobs: string;
+  domainShops: string;
+  domainCommunity: string;
 }
 
 export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
@@ -148,28 +201,58 @@ export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
     surface: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
     surfaceSunken: '#F1EBE2',
+    surfaceHover: '#F3EEE6',
+    neutral0: '#FFFFFF',
+    neutral50: '#FAF7F2',
+    neutral100: '#F1EBE2',
+    neutral200: '#EAE3D9',
+    neutral300: '#D8CFC2',
+    neutral400: '#BFB4A4',
+    neutral500: '#9A9189',
+    neutral600: '#6B6258',
+    neutral700: '#4A433B',
+    neutral800: '#332E28',
+    neutral900: '#221E1A',
     text: '#221E1A',
     textMuted: '#6B6258',
     textFaint: '#9A9189',
     textOnPrimary: '#FFFFFF',
+    textOnAccent: '#2A1B08',
+    textLink: '#1F7A4D',
     border: '#EAE3D9',
     borderStrong: '#D8CFC2',
+    borderFocus: '#1F7A4D',
     primary: '#1F7A4D',
     primarySoft: '#E4F1EA',
+    primaryStrong: '#185E3B',
     accent: '#C2873A',
     accentSoft: '#F6ECDC',
+    accentStrong: '#9E6C28',
     danger: '#B23A2E',
     dangerSoft: '#F7E2DF',
+    dangerStrong: '#8C2C22',
     warning: '#C28A1E',
     warningSoft: '#F8EED7',
+    warningStrong: '#9A6D12',
     success: '#1F7A4D',
     successSoft: '#E4F1EA',
+    successStrong: '#185E3B',
+    info: '#2A7DA3',
+    infoSoft: '#E0EEF4',
+    infoStrong: '#1F6080',
     overlay: 'rgba(27, 24, 20, 0.45)',
     skeleton: '#E9E2D9',
+    skeletonHighlight: '#F5F0E8',
+    shadow: '#3A2E1F',
+    gradientBrand: ['#1F7A4D', '#C2873A'],
+    gradientSurface: ['#FFFFFF', '#FAF7F2'],
     badgePhone: '#3A6FB2',
     badgeCnic: '#1F7A4D',
     badgeJobs: '#C2873A',
     badgeLocal: '#7E2EB2',
+    domainJobs: '#1F7A4D',
+    domainShops: '#C2873A',
+    domainCommunity: '#7E2EB2',
   },
   dark: {
     bg: '#1B1814',
@@ -177,28 +260,58 @@ export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
     surface: '#241F1A',
     surfaceElevated: '#2E2823',
     surfaceSunken: '#161310',
+    surfaceHover: '#2E2823',
+    neutral0: '#161310',
+    neutral50: '#1B1814',
+    neutral100: '#241F1A',
+    neutral200: '#2E2823',
+    neutral300: '#352E27',
+    neutral400: '#473E35',
+    neutral500: '#6B6055',
+    neutral600: '#857C71',
+    neutral700: '#A79D90',
+    neutral800: '#CFC6BA',
+    neutral900: '#F2EDE6',
     text: '#F2EDE6',
     textMuted: '#B7AEA2',
     textFaint: '#857C71',
     textOnPrimary: '#0E1F16',
+    textOnAccent: '#241803',
+    textLink: '#3FBE82',
     border: '#352E27',
     borderStrong: '#473E35',
+    borderFocus: '#22A668',
     primary: '#22A668',
     primarySoft: '#16352A',
+    primaryStrong: '#2FBE7C',
     accent: '#D49A4F',
     accentSoft: '#33291A',
+    accentStrong: '#E2AC63',
     danger: '#E06352',
     dangerSoft: '#3A211D',
+    dangerStrong: '#EC7A6B',
     warning: '#D8A53C',
     warningSoft: '#352B17',
+    warningStrong: '#E6B85A',
     success: '#22A668',
     successSoft: '#16352A',
+    successStrong: '#2FBE7C',
+    info: '#56AECE',
+    infoSoft: '#16303A',
+    infoStrong: '#74C2DE',
     overlay: 'rgba(0, 0, 0, 0.6)',
     skeleton: '#322B24',
+    skeletonHighlight: '#3E362E',
+    shadow: '#000000',
+    gradientBrand: ['#22A668', '#D49A4F'],
+    gradientSurface: ['#2E2823', '#241F1A'],
     badgePhone: '#5B8BD0',
     badgeCnic: '#22A668',
     badgeJobs: '#D49A4F',
     badgeLocal: '#A86BD8',
+    domainJobs: '#22A668',
+    domainShops: '#D49A4F',
+    domainCommunity: '#A86BD8',
   },
 };
 
