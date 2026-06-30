@@ -15,6 +15,7 @@ import { VoiceProvider } from './src/voice/VoiceContext';
 import { ThemeProvider, useTheme } from './src/theme';
 import { MomentProvider } from './src/moments';
 import { CoachMarkProvider } from './src/mascot';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { PhoneEntryScreen } from './src/screens/PhoneEntryScreen';
 import { OtpScreen } from './src/screens/OtpScreen';
 import { RoleScreen } from './src/screens/RoleScreen';
@@ -36,7 +37,11 @@ export default function App() {
               <CoachMarkProvider>
                 {/* StatusBar bar style follows the resolved scheme (light text on dark bg). */}
                 <ThemedStatusBar />
-                <Flow />
+                {/* A screen-tree crash shows the themed mascot fallback while providers +
+                    status bar survive — never a white screen (§4 resilience). */}
+                <ErrorBoundary label="app">
+                  <Flow />
+                </ErrorBoundary>
               </CoachMarkProvider>
             </MomentProvider>
           </OutboxProvider>

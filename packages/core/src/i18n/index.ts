@@ -19,6 +19,9 @@ type StringKey =
   | 'error.offline_title'
   | 'error.offline_body'
   | 'common.retry'
+  | 'common.reload'
+  | 'error.crashed_title'
+  | 'error.crashed_body'
   | 'coach.first_apply'
   | 'empty.no_jobs'
   | 'empty.jobs_hint'
@@ -199,6 +202,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'error.offline_title': 'تاسو آف‌لاین یاست',
     'error.offline_body': 'کله چې بیرته راشئ، موږ به یې بیا هڅه وکړو',
     'common.retry': 'بیا هڅه وکړئ',
+    'common.reload': 'بیا پیل کړئ',
+    'error.crashed_title': 'یوه ستونزه راپیدا شوه',
+    'error.crashed_body': 'دا برخه بنده شوه. بیا یې پیل کړئ.',
     'coach.first_apply': 'یوه دنده ووهئ چې یې وګورئ او غوښتنه وکړئ',
     'empty.no_jobs': 'دلته اوس کار نشته',
     'empty.jobs_hint': 'موږ به تاسو خبر کړو کله چې نوی کار راشي.',
@@ -378,6 +384,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'error.offline_title': 'آپ آف لائن ہیں',
     'error.offline_body': 'جب آپ واپس آئیں گے تو ہم دوبارہ کوشش کریں گے',
     'common.retry': 'دوبارہ کوشش کریں',
+    'common.reload': 'دوبارہ شروع کریں',
+    'error.crashed_title': 'ایک مسئلہ پیش آگیا',
+    'error.crashed_body': 'یہ حصہ رک گیا۔ دوبارہ شروع کریں۔',
     'coach.first_apply': 'دیکھنے اور درخواست دینے کے لیے کسی کام پر ٹیپ کریں',
     'empty.no_jobs': 'اس وقت کوئی کام نہیں',
     'empty.jobs_hint': 'نیا کام آنے پر ہم آپ کو بتائیں گے۔',
@@ -557,6 +566,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'error.offline_title': 'You’re offline',
     'error.offline_body': 'We’ll try again when you’re back',
     'common.retry': 'Try again',
+    'common.reload': 'Reload',
+    'error.crashed_title': 'Something broke',
+    'error.crashed_body': 'This part stopped working. Tap to reload.',
     'coach.first_apply': 'Tap a job to see it and apply',
     'empty.no_jobs': 'No jobs in your area yet',
     'empty.jobs_hint': "We'll let you know the moment a new job is posted.",
