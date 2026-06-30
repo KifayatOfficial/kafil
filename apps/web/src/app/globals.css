@@ -13,6 +13,7 @@
   --primary: #1f7a4d;
   --primary-soft: #e4f1ea;
   --accent: #c2873a;
+  --accent-soft: #f6ecdc;
   --danger: #b23a2e;
   --radius: 12px;
   --radius-pill: 999px;
@@ -34,6 +35,7 @@
     --primary: #22a668;
     --primary-soft: #16352a;
     --accent: #d49a4f;
+    --accent-soft: #33291a;
     --danger: #e06352;
     --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
     --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.6);
@@ -82,3 +84,116 @@ h2 { font-size: 20px; font-weight: 700; }
   font-weight: 600;
 }
 .muted { color: var(--text-muted); font-size: 13px; }
+
+/* ─── Dashboard layout ─────────────────────────────────────────────── */
+.page { min-height: 100vh; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  box-shadow: var(--shadow-1);
+}
+.brand-name { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.brand-tag { font-size: 12px; color: var(--text-muted); }
+.theme-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+}
+
+.container { max-width: 1080px; margin: 0 auto; padding: 24px; }
+
+/* ─── Stat strip ───────────────────────────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-1);
+}
+.stat-primary { background: var(--primary-soft); border-color: transparent; }
+.stat-accent { background: var(--accent-soft); border-color: transparent; }
+.stat-value { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.stat-suffix { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.stat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ─── Section header ───────────────────────────────────────────────── */
+.section-head { display: flex; align-items: center; gap: 10px; margin: 8px 0 16px; }
+.count-pill {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: var(--radius-pill);
+  padding: 2px 12px;
+}
+
+/* ─── Job grid + cards ─────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.job-card { position: relative; margin: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.job-card-featured { border-color: var(--primary); background: linear-gradient(180deg, var(--primary-soft), var(--surface) 60%); }
+.ribbon {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--text-on-primary);
+  background: var(--primary);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+.job-title { font-size: 16px; font-weight: 700; margin: 0; }
+.job-desc { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+.job-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+.chip-rate { color: var(--primary); background: var(--primary-soft); border-color: transparent; }
+.chip-status { text-transform: capitalize; }
+
+/* ─── Empty state ──────────────────────────────────────────────────── */
+.empty { text-align: center; padding: 64px 24px; }
+.empty-glyph { font-size: 48px; }
+.empty-title { font-size: 16px; font-weight: 700; margin: 12px 0 4px; }
