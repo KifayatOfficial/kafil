@@ -59,6 +59,23 @@ type StringKey =
   | 'nav.messages'
   | 'nav.chat'
   | 'nav.post_job'
+  | 'community.title'
+  | 'community.none'
+  | 'community.create'
+  | 'community.create_title'
+  | 'community.name_ph'
+  | 'community.desc_ph'
+  | 'community.members'
+  | 'community.join'
+  | 'community.joined'
+  | 'community.leave'
+  | 'community.posts_empty'
+  | 'community.write_post'
+  | 'community.post_cta'
+  | 'community.join_to_post'
+  | 'community.comments'
+  | 'community.write_comment'
+  | 'community.pinned'
   | 'security.cooldown_title'
   | 'security.cooldown_body'
   | 'onboarding.otp_title'
@@ -196,6 +213,23 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'nav.messages': 'پیغامونه',
     'nav.chat': 'خبرې',
     'nav.post_job': '+ کار',
+    'community.title': 'ټولنه',
+    'community.none': 'تر اوسه هیڅ ډله نشته — لومړۍ جوړه کړئ!',
+    'community.create': '+ نوې ډله',
+    'community.create_title': 'ډله جوړه کړئ',
+    'community.name_ph': 'د ډلې نوم (لکه مینګوره معماران)',
+    'community.desc_ph': 'دا ډله د څه لپاره ده؟',
+    'community.members': 'غړي',
+    'community.join': 'ګډون',
+    'community.joined': 'غړی یاست',
+    'community.leave': 'وتل',
+    'community.posts_empty': 'تر اوسه هیڅ پوسټ نشته — لومړی ولیکئ.',
+    'community.write_post': 'یو څه ولیکئ…',
+    'community.post_cta': 'خپور کړئ',
+    'community.join_to_post': 'د لیکلو لپاره ګډون وکړئ',
+    'community.comments': 'تبصرې',
+    'community.write_comment': 'تبصره ولیکئ…',
+    'community.pinned': '📌 پین شوی',
     'security.cooldown_title': 'نوی وسیله — د خوندیتوب ځنډ',
     'security.cooldown_body': 'ستاسو د خوندیتوب لپاره، د نوي وسیلې څخه د ننوتلو وروسته د ۲۴ ساعتونو لپاره د پیسو کارونه بند دي. لټون او خبرې عادي کار کوي.',
     'onboarding.otp_title': '۶ عددي کوډ ولیکئ',
@@ -332,6 +366,23 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'nav.messages': 'پیغامات',
     'nav.chat': 'چیٹ',
     'nav.post_job': '+ کام',
+    'community.title': 'کمیونٹی',
+    'community.none': 'ابھی کوئی گروپ نہیں — پہلا بنائیں!',
+    'community.create': '+ نیا گروپ',
+    'community.create_title': 'گروپ بنائیں',
+    'community.name_ph': 'گروپ کا نام (مثلاً مینگورہ معمار)',
+    'community.desc_ph': 'یہ گروپ کس لیے ہے؟',
+    'community.members': 'ارکان',
+    'community.join': 'شامل ہوں',
+    'community.joined': 'رکن ہیں',
+    'community.leave': 'چھوڑیں',
+    'community.posts_empty': 'ابھی کوئی پوسٹ نہیں — پہلی لکھیں۔',
+    'community.write_post': 'کچھ لکھیں…',
+    'community.post_cta': 'پوسٹ کریں',
+    'community.join_to_post': 'لکھنے کے لیے شامل ہوں',
+    'community.comments': 'تبصرے',
+    'community.write_comment': 'تبصرہ لکھیں…',
+    'community.pinned': '📌 پن شدہ',
     'security.cooldown_title': 'نیا آلہ — سیکیورٹی وقفہ',
     'security.cooldown_body': 'آپ کی حفاظت کے لیے، نئے آلے پر سائن ان کے بعد 24 گھنٹے رقم کے کام بند ہیں۔ براؤزنگ اور چیٹ معمول کے مطابق کام کرتے ہیں۔',
     'onboarding.otp_title': '6 ہندسوں کا کوڈ درج کریں',
@@ -468,6 +519,23 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'nav.messages': 'Messages',
     'nav.chat': 'Chat',
     'nav.post_job': '+ Post',
+    'community.title': 'Community',
+    'community.none': 'No groups yet — create the first one!',
+    'community.create': '+ New group',
+    'community.create_title': 'Create a group',
+    'community.name_ph': 'Group name (e.g. Mingora Masons)',
+    'community.desc_ph': "What's this group for?",
+    'community.members': 'members',
+    'community.join': 'Join',
+    'community.joined': 'Member',
+    'community.leave': 'Leave',
+    'community.posts_empty': 'No posts yet — write the first one.',
+    'community.write_post': 'Write something…',
+    'community.post_cta': 'Post',
+    'community.join_to_post': 'Join to post',
+    'community.comments': 'Comments',
+    'community.write_comment': 'Write a comment…',
+    'community.pinned': '📌 Pinned',
     'security.cooldown_title': 'New device — security cooldown',
     'security.cooldown_body': 'For your safety, money actions are disabled for 24 hours after signing in on a new device. Browsing and chat work normally.',
     'onboarding.otp_title': 'Enter the 6-digit code',
