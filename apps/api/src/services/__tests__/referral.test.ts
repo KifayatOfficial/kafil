@@ -134,6 +134,26 @@ describe('referral — qualify on first completed job (§10 F7)', () => {
     await referralService.qualifyOnFirstCompletion(lonely.id); // must not throw
     expect(true).toBe(true);
   });
+
+  it('still qualifies a stuck-pending referral on a LATER completion (>=1, not ===1)', async () => {
+    // Regression: the old `=== 1` check dropped the bounty forever if a worker's second
+    // job completed while the referral was still pending (e.g. a failed first attempt).
+    const referrer = await makeUser({ role: 'worker' });
+    const newbie = await makeUser({ role: 'worker' });
+    const code = await referralService.getOrCreateMyCode(referrer.id);
+    if (!code.ok) return;
+    await referralService.claim({ referredUserId: newbie.id, code: code.value.code });
+
+    // Simulate the first completion's qualify NOT having run (the claim is still pending),
+    // and TWO jobs now complete. A `=== 1` guard would see count=2 and skip forever.
+    await completeAssignmentFor(newbie.id);
+    await completeAssignmentFor(newbie.id);
+    await referralService.qualifyOnFirstCompletion(newbie.id);
+
+    expect(await referrerBalance(referrer.id)).toBe(30_000n);
+    const row = await prisma.referral.findFirst({ where: { referredId: newbie.id } });
+    expect(row?.status).toBe('qualified');
+  });
 });
 
 describe('referral — anti-farming', () => {

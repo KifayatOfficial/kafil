@@ -19,6 +19,7 @@ import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { webhookProvider } from '../providers/webhook.provider';
 import { escrowService } from './escrow.service';
+import { walletService } from './wallet.service';
 
 export const webhookService = {
   /**
@@ -91,14 +92,30 @@ export const webhookService = {
     let dispatchErr: string | null = null;
     try {
       if (ev.eventType === 'payment.succeeded' && ev.paymentId) {
-        const r = await escrowService.completeFundingForPayment({
-          paymentId: ev.paymentId,
-          confirmedAmountMinor: ev.amountMinor != null ? BigInt(ev.amountMinor) : undefined,
-        });
-        result = r.ok ? 'funded' : `error:${r.code}`;
-        if (!r.ok) dispatchErr = `${r.code}:${r.message}`;
+        // One payment.succeeded event services both money inflows; we route by the
+        // Payment's refType so a top-up credits the wallet and a job funding fills escrow.
+        const kind = await paymentKind(ev.paymentId);
+        if (kind === 'wallet_topup') {
+          const r = await walletService.completeTopUpForPayment({
+            paymentId: ev.paymentId,
+            confirmedAmountMinor: ev.amountMinor != null ? BigInt(ev.amountMinor) : undefined,
+          });
+          result = r.ok ? 'topped_up' : `error:${r.code}`;
+          if (!r.ok) dispatchErr = `${r.code}:${r.message}`;
+        } else {
+          const r = await escrowService.completeFundingForPayment({
+            paymentId: ev.paymentId,
+            confirmedAmountMinor: ev.amountMinor != null ? BigInt(ev.amountMinor) : undefined,
+          });
+          result = r.ok ? 'funded' : `error:${r.code}`;
+          if (!r.ok) dispatchErr = `${r.code}:${r.message}`;
+        }
       } else if (ev.eventType === 'payment.failed' && ev.paymentId) {
-        const r = await escrowService.failFundingForPayment({ paymentId: ev.paymentId });
+        const kind = await paymentKind(ev.paymentId);
+        const r =
+          kind === 'wallet_topup'
+            ? await walletService.failTopUpForPayment({ paymentId: ev.paymentId })
+            : await escrowService.failFundingForPayment({ paymentId: ev.paymentId });
         result = r.ok ? 'failed' : `error:${r.code}`;
         if (!r.ok) dispatchErr = `${r.code}:${r.message}`;
       }
@@ -129,3 +146,12 @@ export const webhookService = {
     return ok({ processed: true, deduped: false, eventType: ev.eventType });
   },
 };
+
+/** The Payment's refType ('wallet_topup' | 'job' | …), used to route a confirmation. */
+async function paymentKind(paymentId: string): Promise<string | null> {
+  const p = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    select: { refType: true },
+  });
+  return p?.refType ?? null;
+}

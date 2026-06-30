@@ -196,10 +196,13 @@ export const referralService = {
     const pending = await referralRepository.findPendingClaimForReferred(referredUserId);
     if (!pending) return; // no referral, or already qualified/rejected
 
-    // "First completed job" — qualify only on exactly the first completion so a referral
-    // can't be re-triggered by later jobs (and to make the trigger unambiguous).
+    // Qualify once the referred user has completed AT LEAST one job. We use `>= 1`, not
+    // `=== 1`: the once-only guard is the `updateMany WHERE status='pending'` below, so
+    // a later completion that finds the referral still pending (e.g. the first attempt
+    // failed mid-payout) still pays out instead of being lost forever. The `=== 1` form
+    // had a hole — a second job completing before the first qualified dropped the bounty.
     const completed = await referralRepository.countCompletedAssignments(referredUserId);
-    if (completed !== 1) return;
+    if (completed < 1) return;
 
     const rewardMinor = await loadInt('referral.reward_minor', DEFAULT_REWARD_MINOR);
 

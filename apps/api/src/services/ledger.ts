@@ -41,7 +41,8 @@ export type LedgerReason =
   | 'tax_collected'
   | 'fx_conversion'
   | 'referral_bonus' // platform_revenue → referrer wallet (§10 F7, paid on qualifying referral)
-  | 'featured_post'; // employer wallet → platform_revenue (§6.1, paid to boost a job post)
+  | 'featured_post' // employer wallet → platform_revenue (§6.1, paid to boost a job post)
+  | 'topup'; // payment_gateway_clearing → user wallet (§6, PSP-confirmed wallet top-up)
 
 export interface LedgerLeg {
   walletId: string;
@@ -164,6 +165,27 @@ export async function fundEscrow(
     legs: [
       { walletId: gw.id, amountMinor: -args.amountMinor, reason: 'escrow_fund', refType: args.refType, refId: args.refId },
       { walletId: escrow.id, amountMinor: args.amountMinor, reason: 'escrow_fund', refType: args.refType, refId: args.refId },
+    ],
+  });
+}
+
+/**
+ * Wallet top-up. The mirror of payOut: money enters from the PSP via the
+ * payment_gateway_clearing wallet and lands in the user's wallet. Balanced. Called by
+ * the webhook handler only after the PSP confirms the payment actually settled, so we
+ * never credit a wallet for money we haven't received.
+ */
+export async function topUpWallet(
+  tx: Prisma.TransactionClient,
+  args: { userId: string; amountMinor: bigint; refType: string; refId: string },
+): Promise<{ txnId: string }> {
+  if (args.amountMinor <= 0n) throw new Error('top-up amount must be positive');
+  const gw = await ensureWallet(tx, { userId: null, kind: 'payment_gateway_clearing' });
+  const user = await ensureWallet(tx, { userId: args.userId, kind: 'user' });
+  return writeLedgerTxn(tx, {
+    legs: [
+      { walletId: gw.id, amountMinor: -args.amountMinor, reason: 'topup', refType: args.refType, refId: args.refId },
+      { walletId: user.id, amountMinor: args.amountMinor, reason: 'topup', refType: args.refType, refId: args.refId },
     ],
   });
 }
