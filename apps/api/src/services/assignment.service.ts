@@ -21,6 +21,7 @@ import { applicationRepository } from '../repositories/application.repository';
 import { assignmentRepository } from '../repositories/assignment.repository';
 import { conversationRepository } from '../repositories/conversation.repository';
 import { reputationService } from './reputation.service';
+import { referralService } from './referral.service';
 
 export const assignmentService = {
   /** Employer accepts an application → slot fill + create assignment, all atomic. */
@@ -282,6 +283,9 @@ export const assignmentService = {
         // eslint-disable-next-line no-console
         console.error('[assignment] reputation recompute failed:', e instanceof Error ? e.message : String(e));
       }
+      // §10 F7 — pay a referral bounty only on the referred user's FIRST completed job.
+      // Non-fatal and idempotent (no-op if not their first, or no pending referral).
+      await referralService.qualifyOnFirstCompletion(current.workerId);
     }
 
     return ok({ status: finalStatus });

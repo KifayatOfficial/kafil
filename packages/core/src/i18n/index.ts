@@ -90,7 +90,23 @@ type StringKey =
   | 'chat.no_messages'
   | 'chat.sending'
   | 'chat.send_failed'
-  | 'voice.replay';
+  | 'voice.replay'
+  | 'referral.title'
+  | 'referral.subtitle'
+  | 'referral.your_code'
+  | 'referral.share'
+  | 'referral.share_message'
+  | 'referral.my_referrals'
+  | 'referral.none'
+  | 'referral.earned'
+  | 'referral.status_pending'
+  | 'referral.status_qualified'
+  | 'referral.status_rejected'
+  | 'referral.have_code'
+  | 'referral.enter_code'
+  | 'referral.claim'
+  | 'referral.claimed'
+  | 'nav.referrals';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -180,6 +196,22 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'chat.sending': 'لېږل کیږي…',
     'chat.send_failed': 'ونه لېږل شو — بیا هڅه وکړئ',
     'voice.replay': 'بیا واورئ',
+    'referral.title': 'ملګري راوبلئ',
+    'referral.subtitle': 'خپل کوډ شریک کړئ. کله چې ستاسو ملګری خپل لومړی کار بشپړ کړي، تاسو انعام ترلاسه کوئ.',
+    'referral.your_code': 'ستاسو کوډ',
+    'referral.share': 'کوډ شریک کړئ',
+    'referral.share_message': 'په کافل کې راسره یوځای شئ! زما کوډ وکاروئ: ',
+    'referral.my_referrals': 'زما بلنې',
+    'referral.none': 'تر اوسه مو هیڅوک نه دي راوبللي.',
+    'referral.earned': 'گټل شوي',
+    'referral.status_pending': 'انتظار کې',
+    'referral.status_qualified': 'انعام ترلاسه شو',
+    'referral.status_rejected': 'رد شو',
+    'referral.have_code': 'کوډ لرئ؟',
+    'referral.enter_code': 'د ملګري کوډ ولیکئ',
+    'referral.claim': 'وکاروئ',
+    'referral.claimed': 'کوډ ومنل شو!',
+    'nav.referrals': 'بلنې',
   },
   ur: {
     'app.name': 'کافل',
@@ -268,6 +300,22 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'chat.sending': 'بھیجا جا رہا ہے…',
     'chat.send_failed': 'نہیں بھیجا گیا — دوبارہ کوشش کریں',
     'voice.replay': 'دوبارہ سنیں',
+    'referral.title': 'دوستوں کو بلائیں',
+    'referral.subtitle': 'اپنا کوڈ شیئر کریں۔ جب آپ کا دوست پہلا کام مکمل کرے، آپ کو انعام ملے گا۔',
+    'referral.your_code': 'آپ کا کوڈ',
+    'referral.share': 'کوڈ شیئر کریں',
+    'referral.share_message': 'کافل پر میرے ساتھ شامل ہوں! میرا کوڈ استعمال کریں: ',
+    'referral.my_referrals': 'میری دعوتیں',
+    'referral.none': 'ابھی تک آپ نے کسی کو نہیں بلایا۔',
+    'referral.earned': 'کمایا',
+    'referral.status_pending': 'زیرِ التواء',
+    'referral.status_qualified': 'انعام مل گیا',
+    'referral.status_rejected': 'مسترد',
+    'referral.have_code': 'کوڈ ہے؟',
+    'referral.enter_code': 'دوست کا کوڈ درج کریں',
+    'referral.claim': 'استعمال کریں',
+    'referral.claimed': 'کوڈ قبول ہو گیا!',
+    'nav.referrals': 'دعوتیں',
   },
   en: {
     'app.name': 'KAFIL',
@@ -356,6 +404,22 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'chat.sending': 'Sending…',
     'chat.send_failed': "Didn't send — tap to retry",
     'voice.replay': 'Play again',
+    'referral.title': 'Invite friends',
+    'referral.subtitle': "Share your code. When your friend completes their first job, you earn a reward.",
+    'referral.your_code': 'Your code',
+    'referral.share': 'Share code',
+    'referral.share_message': 'Join me on KAFIL! Use my code: ',
+    'referral.my_referrals': 'My invites',
+    'referral.none': "You haven't invited anyone yet.",
+    'referral.earned': 'earned',
+    'referral.status_pending': 'Pending',
+    'referral.status_qualified': 'Reward earned',
+    'referral.status_rejected': 'Rejected',
+    'referral.have_code': 'Have a code?',
+    'referral.enter_code': "Enter a friend's code",
+    'referral.claim': 'Use code',
+    'referral.claimed': 'Code accepted!',
+    'nav.referrals': 'Invites',
   },
 };
 

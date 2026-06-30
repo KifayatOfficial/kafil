@@ -12,6 +12,7 @@ import { PostJobScreen } from './PostJobScreen';
 import { MyActivityScreen } from './MyActivityScreen';
 import { ChatListScreen } from './ChatListScreen';
 import { WalletScreen } from './WalletScreen';
+import { ReferralScreen } from './ReferralScreen';
 import { SkeletonList } from '../components/Skeleton';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
@@ -24,7 +25,7 @@ interface Job {
   status: string;
 }
 
-type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet';
+type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet' | 'referrals';
 
 export function HomeScreen() {
   const { api, signOut, inCooldown, lang } = useAuth();
@@ -91,6 +92,10 @@ export function HomeScreen() {
     return <WalletScreen onBack={() => setModal(null)} />;
   }
 
+  if (modal === 'referrals') {
+    return <ReferralScreen onBack={() => setModal(null)} />;
+  }
+
   const isEmployer = roles.includes('employer');
 
   return (
@@ -115,6 +120,9 @@ export function HomeScreen() {
         </Pressable>
         <Pressable onPress={() => setModal('wallet')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'wallet.title')}>
           <Text style={styles.actionBtnText}>💰</Text>
+        </Pressable>
+        <Pressable onPress={() => setModal('referrals')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'referral.title')}>
+          <Text style={styles.actionBtnText}>🎁</Text>
         </Pressable>
         {isEmployer ? (
           <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]} accessibilityLabel={i18n.t(lang, 'nav.post_job')}>

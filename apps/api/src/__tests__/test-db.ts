@@ -60,6 +60,7 @@ export async function cleanupTestData() {
   await prisma.message.deleteMany({}); // FK on conversations + users
   await prisma.conversationParticipant.deleteMany({});
   await prisma.conversation.deleteMany({});
+  await prisma.referral.deleteMany({}); // FK on users (referrer + referred)
   await prisma.review.deleteMany({}); // reviews FK assignments — must precede
   await prisma.workLog.deleteMany({});
   await prisma.disputeEvidence.deleteMany({});

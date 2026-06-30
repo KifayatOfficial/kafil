@@ -39,7 +39,8 @@ export type LedgerReason =
   | 'partial_refund' // escrow_holding → employer wallet (partial dispute outcome)
   | 'reversal' // chargeback / lost dispute (mirror of any prior txn)
   | 'tax_collected'
-  | 'fx_conversion';
+  | 'fx_conversion'
+  | 'referral_bonus'; // platform_revenue → referrer wallet (§10 F7, paid on qualifying referral)
 
 export interface LedgerLeg {
   walletId: string;
