@@ -57,3 +57,4 @@ tmp/
 # .pending-workflow/ holds files awaiting a workflow-scoped PAT to be pushed
 # under .github/. See PUSHING.md.
 .pending-workflow/
+apps/api/public/uploads/
