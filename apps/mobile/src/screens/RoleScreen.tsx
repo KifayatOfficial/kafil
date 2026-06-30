@@ -4,13 +4,12 @@
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
-import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
 import { makeStyles, useTheme, ThemeToggle } from '../theme';
+import { PressableScale } from '../components/PressableScale';
 
 type Choice = 'worker' | 'employer' | 'both';
 
@@ -87,25 +86,14 @@ function Option({
 }) {
   const styles = useStyles();
   const { colors } = useTheme();
-  const { scale, onPressIn, onPressOut } = usePressScale();
-  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Pressable
-      onPress={() => onPress(choice)}
-      onPressIn={() => {
-        onPressIn();
-        void haptic(motion.hapticToken.TAP_LIGHT);
-      }}
-      onPressOut={onPressOut}
-    >
-      <Animated.View style={[styles.option, animated]}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.optionLabel}>{label}</Text>
-          <Text style={styles.optionSub}>{sub}</Text>
-        </View>
-        {busy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.arrow}>›</Text>}
-      </Animated.View>
-    </Pressable>
+    <PressableScale style={styles.option} onPress={() => onPress(choice)}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.optionLabel}>{label}</Text>
+        <Text style={styles.optionSub}>{sub}</Text>
+      </View>
+      {busy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.arrow}>›</Text>}
+    </PressableScale>
   );
 }
 
