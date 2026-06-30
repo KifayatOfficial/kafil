@@ -24,9 +24,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, ranked: true, jobs: ranked.value.jobs });
     }
   }
-  const res = await jobService.listOpen();
+  // §P1.4 — plain feed is keyset-paginated: ?cursor=<token>&limit=<n>. nextCursor is null
+  // at the end of the feed. (The ranked branch above returns its own scored slice.)
+  const url = new URL(req.url);
+  const cursor = url.searchParams.get('cursor');
+  const limitParam = url.searchParams.get('limit');
+  const res = await jobService.listOpen({
+    cursor,
+    limit: limitParam ? Number.parseInt(limitParam, 10) : undefined,
+  });
   if (!res.ok) return NextResponse.json(res, { status: statusFor(res.code) });
-  return NextResponse.json({ ok: true, ranked: false, jobs: res.value });
+  return NextResponse.json({ ok: true, ranked: false, jobs: res.value.items, nextCursor: res.value.nextCursor });
 }
 
 export async function POST(req: Request) {

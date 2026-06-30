@@ -1,6 +1,6 @@
 // Authenticated home — job feed. Tapping a card opens JobDetailScreen.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
@@ -48,6 +48,10 @@ export function HomeScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [roles, setRoles] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  // §P1.4 — infinite scroll. nextCursor is set only on the plain (non-ranked) feed; the
+  // ranked feed returns its whole scored slice in one shot (no cursor → no paging).
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // First-run coaching: once a worker's feed has loaded with jobs, point them at tapping
   // one. Shows at most once ever (persisted), and never to employers (they get the
@@ -57,10 +61,37 @@ export function HomeScreen() {
   const firstApplyCoach = useCoachMark('home.first_apply', isWorker && feedReadyWithJobs);
 
   const load = useCallback(async () => {
-    const r = await api.get<{ ok: true; jobs: Job[] }>('/api/jobs');
-    if (r.success) setJobs((r.data as { jobs: Job[] }).jobs);
-    else setError('Failed to load');
+    const r = await api.get<{ ok: true; jobs: Job[]; nextCursor?: string | null }>('/api/jobs');
+    if (r.success) {
+      const data = r.data as { jobs: Job[]; nextCursor?: string | null };
+      setJobs(data.jobs);
+      setNextCursor(data.nextCursor ?? null);
+    } else setError('Failed to load');
   }, [api]);
+
+  // Append the next page when the user nears the end. Dedupes by id so a row that shifted
+  // between pages (new insert) never appears twice. No-op when there's no cursor (ranked
+  // feed, or end of the plain feed reached).
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.get<{ ok: true; jobs: Job[]; nextCursor?: string | null }>(
+        `/api/jobs?cursor=${encodeURIComponent(nextCursor)}`,
+      );
+      if (r.success) {
+        const data = r.data as { jobs: Job[]; nextCursor?: string | null };
+        setJobs((cur) => {
+          const have = new Set((cur ?? []).map((j) => j.id));
+          const fresh = data.jobs.filter((j) => !have.has(j.id));
+          return [...(cur ?? []), ...fresh];
+        });
+        setNextCursor(data.nextCursor ?? null);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [api, nextCursor, loadingMore]);
 
   // Pull-to-refresh — on flaky networks users need an explicit "check again" instead of
   // assuming the feed auto-updates. Clears any prior error so a recovered network heals.
@@ -209,6 +240,12 @@ export function HomeScreen() {
           renderItem={({ item }) => <JobCard job={item} onPress={() => setOpenJobId(item.id)} />}
           estimatedItemSize={120}
           contentContainerStyle={{ paddingBottom: 24 }}
+          // §P1.4 — infinite scroll: pull the next keyset page as the user nears the end.
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} /> : null
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
           }

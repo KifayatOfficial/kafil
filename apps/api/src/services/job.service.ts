@@ -6,6 +6,7 @@ import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { jobRepository } from '../repositories/job.repository';
+import { clampLimit, cursorWhere, decodeCursor, paginate } from '../lib/cursor';
 import { redact } from './pii-redactor';
 
 export const jobService = {
@@ -89,8 +90,19 @@ export const jobService = {
     return ok(job);
   },
 
-  async listOpen(): Promise<Result<Awaited<ReturnType<typeof jobRepository.list>>>> {
-    return ok(await jobRepository.list({ status: 'open', limit: 20 }));
+  // §P1.4 — paginated open feed. Returns one page + an opaque nextCursor (null at the
+  // end). Fetches limit+1 to know whether another page exists without a second query.
+  async listOpen(args?: { cursor?: string | null; limit?: number }): Promise<
+    Result<{ items: Awaited<ReturnType<typeof jobRepository.list>>; nextCursor: string | null }>
+  > {
+    const limit = clampLimit(args?.limit);
+    const cursor = decodeCursor(args?.cursor);
+    const rows = await jobRepository.list({
+      status: 'open',
+      take: limit + 1,
+      cursorWhere: cursorWhere(cursor),
+    });
+    return ok(paginate(rows, limit));
   },
 };
 

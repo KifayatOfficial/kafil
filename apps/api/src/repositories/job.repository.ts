@@ -27,17 +27,17 @@ export const jobRepository = {
       include: { slots: true, specialties: { include: { specialty: true } } },
     });
   },
-  list(args: { status?: string; limit?: number }) {
+  // §P1.4 — keyset-paginated plain feed. Orders strictly by (createdAt DESC, id DESC) so
+  // the cursor tuple is monotonic and the page boundary stays stable under inserts. The
+  // featured-first sort lives in the RANKED feed (which gates on now()); this plain feed
+  // is the pre-onboarding fallback where chronological order is correct. The caller passes
+  // `take` already = limit + 1 so the service can detect whether a next page exists.
+  list(args: { status?: string; take: number; cursorWhere?: object }) {
+    const base = args.status ? { status: args.status } : {};
     return prisma.job.findMany({
-      where: args.status ? { status: args.status } : undefined,
-      // §6.1 — currently-featured jobs sort first (Postgres NULLS LAST puts unfeatured
-      // and lapsed boosts after), then newest-first within each group. A lapsed
-      // featured_until (in the past) still sorts ahead of nulls here, so the service
-      // layer is the source of truth for "is it *currently* featured"; this ordering is
-      // a cheap best-effort. The plain feed is the pre-onboarding fallback, so exactness
-      // matters less than in the ranked feed (which gates on now()).
-      orderBy: [{ featuredUntil: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
-      take: args.limit ?? 20,
+      where: { ...base, ...(args.cursorWhere ?? {}) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: args.take,
       include: { slots: true },
     });
   },
