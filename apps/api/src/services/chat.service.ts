@@ -14,6 +14,7 @@
 import { SendMessageInput } from '@kafil/core';
 import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
+import { publish } from '../lib/event-bus';
 import { err, ok, type Result } from '../lib/result';
 import { conversationRepository } from '../repositories/conversation.repository';
 import { redact } from './pii-redactor';
@@ -111,6 +112,18 @@ export const chatService = {
 
       return msg;
     });
+
+    // §P4.1 — push a real-time "new message" hint to the OTHER participants so their open
+    // chat refreshes instantly (replacing the 4s poll). Fires after commit; non-throwing;
+    // the hint carries no message body (readers re-fetch the redacted copy via REST).
+    for (const p of conv.participants) {
+      if (p.userId === args.senderId) continue;
+      publish({
+        type: 'message.new',
+        userId: p.userId,
+        data: { conversationId: args.conversationId, messageId: result.id },
+      });
+    }
 
     return ok({
       messageId: result.id,

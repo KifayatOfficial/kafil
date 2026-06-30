@@ -26,6 +26,7 @@ import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { ReportSheet } from '../components/ReportSheet';
 import { makeStyles, useTheme } from '../theme';
+import { useEventStream } from '../realtime/useEventStream';
 
 interface Msg {
   id: string;
@@ -44,7 +45,9 @@ interface Props {
   onBack: () => void;
 }
 
-const POLL_MS = 4_000;
+// SSE (useEventStream) is the fast path; this poll is a slow fallback for networks where
+// the stream can't hold open. Was 4s when polling was the only mechanism (§P4.1).
+const POLL_MS = 15_000;
 
 /** A message bubble unified across server-confirmed and locally-queued messages. */
 interface UiMsg {
@@ -78,6 +81,18 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
     );
     if (r.success) setMessages((r.data as { messages: Msg[] }).messages);
   }, [api, conversationId]);
+
+  // §P4.1 — real-time: the server pushes 'message.new' the instant the other party sends,
+  // so we refetch immediately instead of waiting on a timer. The poll stays as a slow
+  // fallback (SSE may not connect on every network), so chat still updates either way.
+  useEventStream(
+    {
+      'message.new': (data) => {
+        if (!data.conversationId || data.conversationId === conversationId) void load();
+      },
+    },
+    true,
+  );
 
   useEffect(() => {
     void load();

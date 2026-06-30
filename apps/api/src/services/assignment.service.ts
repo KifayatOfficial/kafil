@@ -16,6 +16,7 @@ import {
 } from '@kafil/core';
 import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
+import { publish } from '../lib/event-bus';
 import { err, ok, type Result } from '../lib/result';
 import { applicationRepository } from '../repositories/application.repository';
 import { assignmentRepository } from '../repositories/assignment.repository';
@@ -196,6 +197,14 @@ export const assignmentService = {
         // eslint-disable-next-line no-console
         console.error('[assignment] hire notification failed:', e instanceof Error ? e.message : String(e));
       }
+
+      // §P4.1 — real-time "you're hired" hint so the worker's open app reacts instantly
+      // (drives the client 'hired' celebration moment without waiting for a poll/push).
+      publish({
+        type: 'application.status',
+        userId: application.workerId,
+        data: { status: 'accepted', assignmentId: result.assignmentId, conversationId: result.conversationId },
+      });
 
       return ok(result);
     } catch (e) {
