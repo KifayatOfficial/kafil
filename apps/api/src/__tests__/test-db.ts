@@ -66,6 +66,11 @@ export async function cleanupTestData() {
   await prisma.post.deleteMany({});
   await prisma.groupMember.deleteMany({});
   await prisma.group.deleteMany({});
+  // Shops: reviews + group-order participants → group_orders → shops (FK + users).
+  await prisma.shopReview.deleteMany({});
+  await prisma.groupOrderParticipant.deleteMany({});
+  await prisma.groupOrder.deleteMany({});
+  await prisma.shop.deleteMany({});
   await prisma.review.deleteMany({}); // reviews FK assignments — must precede
   await prisma.workLog.deleteMany({});
   await prisma.disputeEvidence.deleteMany({});

@@ -72,6 +72,7 @@ model User {
   groupMemberships GroupMember[]
   postsAuthored    Post[]               @relation("PostAuthor")
   commentsAuthored Comment[]            @relation("CommentAuthor")
+  shopReviews      ShopReview[]         @relation("ShopReviewAuthor")
 
   @@map("users")
 }
@@ -404,8 +405,30 @@ model Shop {
   owner    User      @relation(fields: [ownerId], references: [id])
   location Location? @relation(fields: [locationId], references: [id])
   groupOrders GroupOrder[]
+  reviews  ShopReview[]
 
+  @@index([status, locationId])
   @@map("shops")
+}
+
+// §5 / v1.0 — shop customer reviews. Distinct from the assignment-bound Review (which
+// is the double-blind job review). A customer rates a shop directly; one review per
+// (shop, author) so a single customer can't inflate a rating.
+model ShopReview {
+  id        String   @id @default(uuid()) @db.Uuid
+  shopId    String   @map("shop_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  rating    Int      @db.SmallInt
+  comment   String?
+  status    String   @default("visible") @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  shop   Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  author User @relation("ShopReviewAuthor", fields: [authorId], references: [id])
+
+  @@unique([shopId, authorId])
+  @@index([shopId, status])
+  @@map("shop_reviews")
 }
 
 model Group {

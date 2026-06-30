@@ -76,6 +76,19 @@ type StringKey =
   | 'community.comments'
   | 'community.write_comment'
   | 'community.pinned'
+  | 'shops.title'
+  | 'shops.none'
+  | 'shops.create'
+  | 'shops.create_title'
+  | 'shops.name_ph'
+  | 'shops.desc_ph'
+  | 'shops.category_ph'
+  | 'shops.reviews'
+  | 'shops.no_reviews'
+  | 'shops.write_review'
+  | 'shops.your_rating'
+  | 'shops.submit_review'
+  | 'shops.review_done'
   | 'security.cooldown_title'
   | 'security.cooldown_body'
   | 'onboarding.otp_title'
@@ -230,6 +243,19 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'community.comments': 'تبصرې',
     'community.write_comment': 'تبصره ولیکئ…',
     'community.pinned': '📌 پین شوی',
+    'shops.title': 'پلورنځي',
+    'shops.none': 'تر اوسه هیڅ پلورنځی نشته.',
+    'shops.create': '+ پلورنځی',
+    'shops.create_title': 'پلورنځی جوړ کړئ',
+    'shops.name_ph': 'د پلورنځي نوم',
+    'shops.desc_ph': 'تاسو څه پلورئ؟',
+    'shops.category_ph': 'ډله (لکه سیمنټ)',
+    'shops.reviews': 'بیاکتنې',
+    'shops.no_reviews': 'تر اوسه هیڅ بیاکتنه نشته.',
+    'shops.write_review': 'بیاکتنه ولیکئ',
+    'shops.your_rating': 'ستاسو درجه',
+    'shops.submit_review': 'ولیږئ',
+    'shops.review_done': 'مننه — بیاکتنه مو خوندي شوه!',
     'security.cooldown_title': 'نوی وسیله — د خوندیتوب ځنډ',
     'security.cooldown_body': 'ستاسو د خوندیتوب لپاره، د نوي وسیلې څخه د ننوتلو وروسته د ۲۴ ساعتونو لپاره د پیسو کارونه بند دي. لټون او خبرې عادي کار کوي.',
     'onboarding.otp_title': '۶ عددي کوډ ولیکئ',
@@ -383,6 +409,19 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'community.comments': 'تبصرے',
     'community.write_comment': 'تبصرہ لکھیں…',
     'community.pinned': '📌 پن شدہ',
+    'shops.title': 'دکانیں',
+    'shops.none': 'ابھی کوئی دکان نہیں۔',
+    'shops.create': '+ دکان',
+    'shops.create_title': 'دکان بنائیں',
+    'shops.name_ph': 'دکان کا نام',
+    'shops.desc_ph': 'آپ کیا بیچتے ہیں؟',
+    'shops.category_ph': 'قسم (مثلاً سیمنٹ)',
+    'shops.reviews': 'جائزے',
+    'shops.no_reviews': 'ابھی کوئی جائزہ نہیں۔',
+    'shops.write_review': 'جائزہ لکھیں',
+    'shops.your_rating': 'آپ کی درجہ بندی',
+    'shops.submit_review': 'بھیجیں',
+    'shops.review_done': 'شکریہ — آپ کا جائزہ محفوظ ہو گیا!',
     'security.cooldown_title': 'نیا آلہ — سیکیورٹی وقفہ',
     'security.cooldown_body': 'آپ کی حفاظت کے لیے، نئے آلے پر سائن ان کے بعد 24 گھنٹے رقم کے کام بند ہیں۔ براؤزنگ اور چیٹ معمول کے مطابق کام کرتے ہیں۔',
     'onboarding.otp_title': '6 ہندسوں کا کوڈ درج کریں',
@@ -536,6 +575,19 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'community.comments': 'Comments',
     'community.write_comment': 'Write a comment…',
     'community.pinned': '📌 Pinned',
+    'shops.title': 'Shops',
+    'shops.none': 'No shops listed yet.',
+    'shops.create': '+ Shop',
+    'shops.create_title': 'List a shop',
+    'shops.name_ph': 'Shop name',
+    'shops.desc_ph': 'What do you sell?',
+    'shops.category_ph': 'Category (e.g. cement)',
+    'shops.reviews': 'Reviews',
+    'shops.no_reviews': 'No reviews yet.',
+    'shops.write_review': 'Write a review',
+    'shops.your_rating': 'Your rating',
+    'shops.submit_review': 'Submit',
+    'shops.review_done': 'Thanks — your review is saved!',
     'security.cooldown_title': 'New device — security cooldown',
     'security.cooldown_body': 'For your safety, money actions are disabled for 24 hours after signing in on a new device. Browsing and chat work normally.',
     'onboarding.otp_title': 'Enter the 6-digit code',
