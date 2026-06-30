@@ -58,6 +58,7 @@ interface JobDetail {
   status: string;
   headcount: number;
   slots: JobSlot[];
+  featuredUntil?: string | null;
 }
 
 interface Props {
@@ -71,6 +72,7 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
   const [job, setJob] = useState<JobDetail | null>(null);
   const [applicants, setApplicants] = useState<Applicant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [boosting, setBoosting] = useState(false);
   // Op ids whose terminal outcome we've already reconciled — so the effect reloads
   // (and haptic-fires) once per resolution, not on every ops snapshot.
   const reconciled = useRef<Set<string>>(new Set());
@@ -85,6 +87,30 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
     if (jobR.success) setJob((jobR.data as { job: JobDetail }).job);
     if (appsR.success) setApplicants((appsR.data as { applications: Applicant[] }).applications);
   }, [api, jobId]);
+
+  // §6.1 — boost this job to the top of the feed (paid). Charged from the employer's
+  // wallet; the server enforces ownership, open-status, balance, and no double-charge.
+  const isFeatured = !!job?.featuredUntil && new Date(job.featuredUntil).getTime() > Date.now();
+  const boost = async () => {
+    if (!job || boosting || isFeatured || job.status !== 'open') return;
+    setBoosting(true);
+    setError(null);
+    void haptic(motion.hapticToken.TAP_MEDIUM);
+    const r = await api.post(`/api/jobs/${jobId}/feature`, {}, { idempotencyKey: randomUUID() });
+    if (r.success) {
+      void haptic(motion.hapticToken.SUCCESS);
+      await load(); // reflect featuredUntil
+    } else {
+      void haptic(motion.hapticToken.ERROR);
+      // The service returns CONFLICT for insufficient balance; show the friendly hint.
+      setError(
+        r.status === 409
+          ? i18n.t(lang, 'featured.insufficient')
+          : (r.data as { message?: string }).message ?? `boost failed (${r.status})`,
+      );
+    }
+    setBoosting(false);
+  };
 
   useEffect(() => {
     void load();
@@ -175,6 +201,27 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
             {job.headcount} needed · {job.slots.filter((s) => s.status === 'open').length} open ·{' '}
             {job.slots.filter((s) => s.status === 'filled').length} filled · status {job.status}
           </Text>
+
+          {/* §6.1 — boost to top of feed. Show the badge when active, the paid CTA when
+              the job is open and not yet featured. */}
+          {isFeatured ? (
+            <View style={styles.featuredActive}>
+              <Text style={styles.featuredActiveText}>{i18n.t(lang, 'featured.active')}</Text>
+            </View>
+          ) : job.status === 'open' ? (
+            <Pressable
+              onPress={boost}
+              disabled={boosting}
+              style={[styles.boostBtn, boosting && styles.boostBtnDisabled]}
+              accessibilityLabel={i18n.t(lang, 'featured.boost')}
+            >
+              {boosting ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.boostBtnText}>⭐ {i18n.t(lang, 'featured.boost')} · 150 PKR</Text>
+              )}
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -291,6 +338,27 @@ const styles = StyleSheet.create({
   h1: { fontSize: 18, fontWeight: '700', color: motion.color.text, flex: 1, textAlign: 'center' },
   jobSummary: { paddingHorizontal: 16, paddingBottom: 8 },
   muted: { color: '#888', fontSize: 13 },
+  boostBtn: {
+    marginTop: 10,
+    backgroundColor: motion.color.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: motion.radius.pill,
+    alignSelf: 'flex-start',
+  },
+  boostBtnDisabled: { backgroundColor: '#bbb' },
+  boostBtnText: { color: 'white', fontWeight: '700' },
+  featuredActive: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#e8f1ec',
+    borderColor: motion.color.primary,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: motion.radius.pill,
+  },
+  featuredActiveText: { color: motion.color.primary, fontWeight: '700', fontSize: 13 },
   errorBanner: {
     backgroundColor: '#fcefd9',
     padding: 10,

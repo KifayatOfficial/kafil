@@ -40,7 +40,8 @@ export type LedgerReason =
   | 'reversal' // chargeback / lost dispute (mirror of any prior txn)
   | 'tax_collected'
   | 'fx_conversion'
-  | 'referral_bonus'; // platform_revenue → referrer wallet (§10 F7, paid on qualifying referral)
+  | 'referral_bonus' // platform_revenue → referrer wallet (§10 F7, paid on qualifying referral)
+  | 'featured_post'; // employer wallet → platform_revenue (§6.1, paid to boost a job post)
 
 export interface LedgerLeg {
   walletId: string;

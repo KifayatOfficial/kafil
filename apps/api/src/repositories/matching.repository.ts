@@ -15,6 +15,7 @@ export interface JobCandidateRow {
   headcount: number;
   payment_mode: string;
   created_at: Date;
+  featured_until: Date | null; // §6.1 — paid boost expiry (null/past = not featured)
   distance_m: number; // geodesic metres from the worker's base location
   open_slots: number;
   specialty_ids: string[];
@@ -50,6 +51,7 @@ export const matchingRepository = {
         headcount: number;
         payment_mode: string;
         created_at: Date;
+        featured_until: Date | null;
         distance_m: number;
         open_slots: bigint;
         specialty_ids: string[] | null;
@@ -66,6 +68,7 @@ export const matchingRepository = {
         j.headcount,
         j.payment_mode,
         j.created_at,
+        j.featured_until,
         ST_Distance(
           loc.geog,
           ST_SetSRID(ST_MakePoint(${args.lng}::double precision, ${args.lat}::double precision), 4326)::geography
@@ -96,6 +99,7 @@ export const matchingRepository = {
       headcount: r.headcount,
       payment_mode: r.payment_mode,
       created_at: r.created_at,
+      featured_until: r.featured_until,
       distance_m: Number(r.distance_m),
       open_slots: Number(r.open_slots),
       specialty_ids: r.specialty_ids ?? [],

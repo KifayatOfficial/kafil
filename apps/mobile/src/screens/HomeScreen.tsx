@@ -23,6 +23,9 @@ interface Job {
   ratePkr: number;
   rateUnit: string;
   status: string;
+  // Ranked feed sends `featured`; plain feed sends `featuredUntil` — derive a single flag.
+  featured?: boolean;
+  featuredUntil?: string | null;
 }
 
 type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet' | 'referrals';
@@ -157,7 +160,12 @@ export function HomeScreen() {
 
 function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
   const { scale, onPressIn, onPressOut } = usePressScale();
+  const { lang } = useAuth();
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  // §6.1 — featured flag from either feed shape.
+  const featured =
+    job.featured === true ||
+    (!!job.featuredUntil && new Date(job.featuredUntil).getTime() > Date.now());
   return (
     <Pressable
       onPress={onPress}
@@ -167,7 +175,8 @@ function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
       }}
       onPressOut={onPressOut}
     >
-      <Animated.View style={[styles.card, animatedStyle]}>
+      <Animated.View style={[styles.card, featured && styles.cardFeatured, animatedStyle]}>
+        {featured ? <Text style={styles.featuredBadge}>{i18n.t(lang, 'featured.badge')}</Text> : null}
         <Text style={styles.title}>{job.title}</Text>
         <Text style={styles.muted}>
           {job.ratePkr} PKR / {job.rateUnit} · {job.status}
@@ -213,5 +222,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  cardFeatured: { borderWidth: 1, borderColor: motion.color.primary, backgroundColor: '#f3f8f5' },
+  featuredBadge: { color: motion.color.primary, fontWeight: '700', fontSize: 12, marginBottom: 4 },
   title: { fontSize: 16, fontWeight: '600', color: motion.color.text, marginBottom: 4 },
 });

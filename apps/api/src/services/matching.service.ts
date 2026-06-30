@@ -26,6 +26,11 @@ const DEFAULT_WEIGHTS = {
   reputation: 12, // employer reputation (§7) — "is this a good employer to work for?"
   freshness: 8,
   exposurePenalty: 8, // subtracted, scaled by the worker's active load
+  // §6.1 — paid boost. A flat additive bump for currently-featured jobs. Sized so a
+  // featured job reliably outranks an equivalent un-featured one nearby, WITHOUT
+  // overpowering a strong specialty+distance match for a job the worker actually wants
+  // (we still don't show a far-away wrong-trade job above a perfect local match).
+  featuredBoost: 25,
 };
 
 // Distance decay half-life in metres: score halves every ~3km. Tuned for a tehsil-scale
@@ -44,6 +49,8 @@ export interface RankedJob {
   paymentMode: string;
   distanceM: number;
   openSlots: number;
+  /** §6.1 — true when this job is a currently-active paid boost. */
+  featured: boolean;
   score: number;
   why: {
     specialtyMatch: number;
@@ -52,6 +59,7 @@ export interface RankedJob {
     freshness: number;
     employerReputation: number;
     exposurePenalty: number;
+    featuredBoost: number;
   };
 }
 
@@ -121,11 +129,16 @@ export const matchingService = {
             ? 0.5
             : 0.7 * (c.employer_rating / 5) + 0.3 * (c.employer_payment_reliability ?? 0.5);
 
+        // §6.1 — paid boost only counts while the window is live (gate on now()).
+        const featured = c.featured_until != null && c.featured_until.getTime() > now;
+        const featuredBoost = featured ? weights.featuredBoost : 0;
+
         const score =
           weights.specialty * specialtyMatch +
           weights.distance * dDecay +
           weights.reputation * empRep +
-          weights.freshness * fresh -
+          weights.freshness * fresh +
+          featuredBoost -
           exposurePenalty;
 
         return {
@@ -138,6 +151,7 @@ export const matchingService = {
           paymentMode: c.payment_mode,
           distanceM: Math.round(c.distance_m),
           openSlots: c.open_slots,
+          featured,
           score: Math.round(score * 1000) / 1000,
           why: {
             specialtyMatch,
@@ -146,6 +160,7 @@ export const matchingService = {
             freshness: Math.round(fresh * 1000) / 1000,
             employerReputation: Math.round(empRep * 1000) / 1000,
             exposurePenalty: Math.round(exposurePenalty * 1000) / 1000,
+            featuredBoost,
           },
         };
       })

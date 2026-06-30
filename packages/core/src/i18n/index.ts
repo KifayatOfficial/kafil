@@ -106,7 +106,12 @@ type StringKey =
   | 'referral.enter_code'
   | 'referral.claim'
   | 'referral.claimed'
-  | 'nav.referrals';
+  | 'nav.referrals'
+  | 'featured.badge'
+  | 'featured.boost'
+  | 'featured.active'
+  | 'featured.boosted'
+  | 'featured.insufficient';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -212,6 +217,11 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'referral.claim': 'وکاروئ',
     'referral.claimed': 'کوډ ومنل شو!',
     'nav.referrals': 'بلنې',
+    'featured.badge': '⭐ مخکښ',
+    'featured.boost': 'سر ته پورته کړئ',
+    'featured.active': 'دا کار اوس مخکښ دی',
+    'featured.boosted': 'ستاسو کار سر ته پورته شو!',
+    'featured.insufficient': 'بیلانس کافي نه دی — لومړی بټوه ډکه کړئ',
   },
   ur: {
     'app.name': 'کافل',
@@ -316,6 +326,11 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'referral.claim': 'استعمال کریں',
     'referral.claimed': 'کوڈ قبول ہو گیا!',
     'nav.referrals': 'دعوتیں',
+    'featured.badge': '⭐ نمایاں',
+    'featured.boost': 'سب سے اوپر لے جائیں',
+    'featured.active': 'یہ کام ابھی نمایاں ہے',
+    'featured.boosted': 'آپ کا کام اوپر آ گیا!',
+    'featured.insufficient': 'بیلنس کافی نہیں — پہلے والیٹ ٹاپ اپ کریں',
   },
   en: {
     'app.name': 'KAFIL',
@@ -420,6 +435,11 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'referral.claim': 'Use code',
     'referral.claimed': 'Code accepted!',
     'nav.referrals': 'Invites',
+    'featured.badge': '⭐ Featured',
+    'featured.boost': 'Boost to top',
+    'featured.active': 'This job is featured',
+    'featured.boosted': 'Your job is boosted to the top!',
+    'featured.insufficient': 'Not enough balance — top up your wallet first',
   },
 };
 

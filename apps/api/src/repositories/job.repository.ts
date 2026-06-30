@@ -30,7 +30,13 @@ export const jobRepository = {
   list(args: { status?: string; limit?: number }) {
     return prisma.job.findMany({
       where: args.status ? { status: args.status } : undefined,
-      orderBy: { createdAt: 'desc' },
+      // §6.1 — currently-featured jobs sort first (Postgres NULLS LAST puts unfeatured
+      // and lapsed boosts after), then newest-first within each group. A lapsed
+      // featured_until (in the past) still sorts ahead of nulls here, so the service
+      // layer is the source of truth for "is it *currently* featured"; this ordering is
+      // a cheap best-effort. The plain feed is the pre-onboarding fallback, so exactness
+      // matters less than in the ranked feed (which gates on now()).
+      orderBy: [{ featuredUntil: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
       take: args.limit ?? 20,
       include: { slots: true },
     });

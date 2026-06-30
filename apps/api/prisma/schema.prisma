@@ -187,6 +187,9 @@ model Job {
   expiresAt           DateTime? @map("expires_at") @db.Timestamptz
   paymentMode         String    @default("cash") @map("payment_mode") @db.VarChar(16)
   photos              Json      @default("[]")
+  // §6.1/§21.2 — paid "featured" boost: when set and in the future, the job sorts to
+  // the top of the feed. Charged at posting/boost time (cash-mode revenue mechanism).
+  featuredUntil       DateTime? @map("featured_until") @db.Timestamptz
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   version             Int       @default(0)
@@ -200,6 +203,7 @@ model Job {
 
   @@index([status, locationId])
   @@index([employerId])
+  @@index([status, featuredUntil])
   @@map("jobs")
 }
 
