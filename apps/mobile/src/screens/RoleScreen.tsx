@@ -3,13 +3,14 @@
 // role rows + role-profile rows lazily.
 
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, randomUUID } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
+import { makeStyles, useTheme, ThemeToggle } from '../theme';
 
 type Choice = 'worker' | 'employer' | 'both';
 
@@ -19,6 +20,7 @@ interface Props {
 
 export function RoleScreen({ onDone }: Props) {
   const { api, lang } = useAuth();
+  const styles = useStyles();
   useVoicePrompt('onboarding.role');
   const [busy, setBusy] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +54,9 @@ export function RoleScreen({ onDone }: Props) {
 
   return (
     <View style={styles.root}>
+      <View style={styles.topBar}>
+        <ThemeToggle />
+      </View>
       <View style={styles.titleRow}>
         <Text style={styles.title}>{i18n.t(lang, 'onboarding.role_prompt')}</Text>
         <VoicePromptButton promptKey="onboarding.role" accessibilityLabel={i18n.t(lang, 'voice.replay')} />
@@ -80,6 +85,8 @@ function Option({
   busy: boolean;
   onPress: (c: Choice) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -96,27 +103,31 @@ function Option({
           <Text style={styles.optionLabel}>{label}</Text>
           <Text style={styles.optionSub}>{sub}</Text>
         </View>
-        {busy ? <ActivityIndicator color={motion.color.primary} /> : <Text style={styles.arrow}>›</Text>}
+        {busy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.arrow}>›</Text>}
       </Animated.View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, padding: 24, paddingTop: 60 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  title: { fontSize: 24, fontWeight: '700', color: motion.color.text, flexShrink: 1 },
-  subtitle: { color: '#888', marginBottom: 24 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, padding: t.spacing.xl, paddingTop: 60 },
+  topBar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: t.spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: t.spacing.sm },
+  title: { ...t.type.h1, color: t.colors.text, flexShrink: 1 },
+  subtitle: { ...t.type.body, color: t.colors.textMuted, marginBottom: t.spacing.xl },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: motion.color.surface,
+    backgroundColor: t.colors.surface,
     padding: 18,
-    borderRadius: motion.radius.md,
-    marginBottom: 12,
+    borderRadius: t.radius.lg,
+    marginBottom: t.spacing.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  optionLabel: { fontSize: 17, fontWeight: '600', color: motion.color.text },
-  optionSub: { color: '#888', marginTop: 4 },
-  arrow: { fontSize: 24, color: motion.color.primary, marginStart: 12 },
-  error: { color: motion.color.danger, marginTop: 16, textAlign: 'center' },
-});
+  optionLabel: { ...t.type.title, color: t.colors.text },
+  optionSub: { ...t.type.caption, color: t.colors.textMuted, marginTop: t.spacing.xs },
+  arrow: { fontSize: 24, color: t.colors.primary, marginStart: t.spacing.md },
+  error: { ...t.type.body, color: t.colors.danger, marginTop: t.spacing.lg, textAlign: 'center' },
+}));

@@ -13,7 +13,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -24,6 +23,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { makeStyles, useTheme } from '../theme';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -53,10 +53,15 @@ function pkr(minor: string): string {
 
 export function WalletScreen({ onBack }: Props) {
   const { api, inCooldown, lang: L } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [amountPkr, setAmountPkr] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [topUpPkr, setTopUpPkr] = useState('');
+  const [toppingUp, setToppingUp] = useState(false);
+  const [topUpNote, setTopUpNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const r = await api.get<{ ok: true; wallet: Wallet }>('/api/wallet');
@@ -116,6 +121,46 @@ export function WalletScreen({ onBack }: Props) {
     }
   };
 
+  // §6 — top up the wallet. Initiate a pending Payment, then (dev) confirm it so the
+  // balance updates immediately. In production the confirm is the signed PSP webhook;
+  // the dev-confirm route is hard-disabled there, so this gracefully shows "pending".
+  const topUpEnteredPkr = Number.parseInt(topUpPkr, 10);
+  const validTopUp = Number.isFinite(topUpEnteredPkr) && topUpEnteredPkr >= 50;
+  const topUp = async () => {
+    if (!validTopUp || toppingUp || inCooldown) return;
+    setToppingUp(true);
+    setError(null);
+    setTopUpNote(null);
+    void haptic(motion.hapticToken.TAP_MEDIUM);
+
+    const key = randomUUID();
+    const amountMinor = String(topUpEnteredPkr * 100);
+    const init = await api.post<{ ok: true; value: { paymentId: string } }>(
+      '/api/wallet/topup',
+      { amount_minor: amountMinor, idempotency_key: key },
+      { idempotencyKey: key },
+    );
+    if (!init.success) {
+      void haptic(motion.hapticToken.ERROR);
+      setError((init.data as { message?: string }).message ?? i18n.t(L, 'error.generic'));
+      setToppingUp(false);
+      return;
+    }
+    const paymentId = (init.data as { value: { paymentId: string } }).value.paymentId;
+
+    // Dev confirm (PSP simulation). If unavailable (prod), surface a pending note.
+    const confirm = await api.post('/api/wallet/topup/confirm', { payment_id: paymentId });
+    if (confirm.success) {
+      void haptic(motion.hapticToken.SUCCESS);
+      setTopUpPkr('');
+      setTopUpNote(i18n.t(L, 'wallet.topup_success'));
+      await load();
+    } else {
+      setTopUpNote(i18n.t(L, 'wallet.topup_pending'));
+    }
+    setToppingUp(false);
+  };
+
   const { scale, onPressIn, onPressOut } = usePressScale();
   const ctaAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -124,14 +169,14 @@ export function WalletScreen({ onBack }: Props) {
       <View style={styles.root}>
         <View style={styles.header}>
           <Pressable onPress={onBack} hitSlop={16} accessibilityLabel="Back">
-            <Text style={{ color: motion.color.primary, fontSize: 18 }}>← Back</Text>
+            <Text style={{ color: colors.primary, fontSize: 18 }}>← Back</Text>
           </Pressable>
           <Text style={styles.h1}>{i18n.t(L, 'wallet.title')}</Text>
           <View style={{ width: 60 }} />
         </View>
 
         {phase === 'loading' ? (
-          <ActivityIndicator color={motion.color.primary} style={{ marginTop: 80 }} />
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 80 }} />
         ) : phase === 'success' ? (
           <View style={styles.successWrap}>
             <KafilLottie
@@ -156,6 +201,51 @@ export function WalletScreen({ onBack }: Props) {
                 <Text style={styles.guardText}>🔒 {i18n.t(L, 'wallet.cooldown')}</Text>
               </View>
             ) : null}
+
+            {/* §6 — TOP UP. Add money to spend on featured posts / escrow funding. */}
+            <Text style={styles.label}>{i18n.t(L, 'wallet.topup_amount')}</Text>
+            <View style={styles.chipRow}>
+              {[200, 500, 1000].map((amt) => (
+                <Pressable
+                  key={amt}
+                  onPress={() => {
+                    void haptic(motion.hapticToken.TAP_LIGHT);
+                    setTopUpPkr(String(amt));
+                  }}
+                  style={[styles.chip, topUpPkr === String(amt) && styles.chipActive]}
+                  disabled={inCooldown}
+                  accessibilityLabel={`${amt} PKR`}
+                >
+                  <Text style={[styles.chipText, topUpPkr === String(amt) && styles.chipTextActive]}>{amt}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.amountRow}>
+              <TextInput
+                value={topUpPkr}
+                onChangeText={(v) => setTopUpPkr(v.replace(/[^0-9]/g, ''))}
+                placeholder="0"
+                keyboardType="number-pad"
+                style={styles.amountInput}
+                maxLength={7}
+                editable={!inCooldown}
+              />
+              <Pressable
+                onPress={topUp}
+                disabled={!validTopUp || toppingUp || inCooldown}
+                style={[styles.topUpBtn, (!validTopUp || toppingUp || inCooldown) && styles.ctaDisabled]}
+                accessibilityLabel={i18n.t(L, 'wallet.topup_cta')}
+              >
+                {toppingUp ? (
+                  <ActivityIndicator color={colors.textOnPrimary} />
+                ) : (
+                  <Text style={styles.topUpBtnText}>{i18n.t(L, 'wallet.topup_cta')}</Text>
+                )}
+              </Pressable>
+            </View>
+            {topUpNote ? <Text style={styles.topUpNote}>{topUpNote}</Text> : null}
+
+            <View style={styles.divider} />
 
             <Text style={styles.label}>{i18n.t(L, 'wallet.amount')}</Text>
             <View style={styles.amountRow}>
@@ -193,7 +283,7 @@ export function WalletScreen({ onBack }: Props) {
                 style={[styles.cta, (!validAmount || phase === 'submitting' || inCooldown) && styles.ctaDisabled, ctaAnim]}
               >
                 {phase === 'submitting' ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color={colors.textOnPrimary} />
                 ) : (
                   <Text style={styles.ctaText}>{i18n.t(L, 'wallet.withdraw')}</Text>
                 )}
@@ -223,8 +313,10 @@ export function WalletScreen({ onBack }: Props) {
 
 // §25.2 — never colour alone: pair the dot with a text label.
 function StatusBadge({ status, lang }: { status: string; lang: import('@kafil/core').Lang }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const color =
-    status === 'sent' ? motion.color.primary : status === 'failed' ? motion.color.danger : motion.color.warning;
+    status === 'sent' ? colors.primary : status === 'failed' ? colors.danger : colors.warning;
   const label = status === 'sent' ? i18n.t(lang, 'wallet.sent') : status;
   return (
     <View style={styles.badge}>
@@ -234,81 +326,113 @@ function StatusBadge({ status, lang }: { status: string; lang: import('@kafil/co
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingHorizontal: 16, paddingTop: 50 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingHorizontal: t.spacing.lg, paddingTop: 50 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: motion.spacing.md,
+    paddingBottom: t.spacing.md,
   },
-  h1: { fontSize: 18, fontWeight: '700', color: motion.color.text },
+  h1: { ...t.type.h2, color: t.colors.text },
   balanceCard: {
-    backgroundColor: motion.color.primary,
-    borderRadius: motion.radius.lg,
-    padding: motion.spacing.xl,
+    backgroundColor: t.colors.primarySoft,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.xl,
     alignItems: 'center',
-    marginTop: motion.spacing.sm,
+    marginTop: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(2),
   },
-  balanceLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
-  balanceValue: { color: 'white', fontSize: 40, fontWeight: '800', marginTop: 4 },
+  balanceLabel: { ...t.type.caption, color: t.colors.textMuted },
+  balanceValue: { color: t.colors.primary, fontSize: 40, fontWeight: '800', marginTop: t.spacing.xs },
   balanceCurrency: { fontSize: 18, fontWeight: '600' },
   guardBanner: {
-    backgroundColor: '#fcefd9',
-    padding: motion.spacing.md,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.warningSoft,
+    padding: t.spacing.md,
+    borderRadius: t.radius.md,
     borderWidth: 1,
-    borderColor: motion.color.warning,
-    marginTop: motion.spacing.lg,
+    borderColor: t.colors.warning,
+    marginTop: t.spacing.lg,
   },
-  guardText: { color: motion.color.text, fontSize: 13 },
-  label: { fontSize: 14, fontWeight: '600', color: motion.color.text, marginTop: motion.spacing.xl, marginBottom: 6 },
-  amountRow: { flexDirection: 'row', gap: motion.spacing.sm, alignItems: 'center' },
+  guardText: { ...t.type.caption, color: t.colors.text },
+  label: { ...t.type.label, color: t.colors.text, marginTop: t.spacing.xl, marginBottom: 6 },
+  amountRow: { flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' },
   amountInput: {
     flex: 1,
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 22,
     fontWeight: '700',
-    color: motion.color.text,
+    color: t.colors.text,
+    borderWidth: 1,
+    borderColor: t.colors.border,
   },
   maxBtn: {
-    paddingHorizontal: motion.spacing.lg,
+    paddingHorizontal: t.spacing.lg,
     paddingVertical: 14,
-    borderRadius: motion.radius.md,
+    borderRadius: t.radius.md,
     borderWidth: 1,
-    borderColor: motion.color.primary,
+    borderColor: t.colors.primary,
   },
-  maxBtnText: { color: motion.color.primary, fontWeight: '700' },
-  cta: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 16,
-    borderRadius: motion.radius.pill,
+  maxBtnText: { color: t.colors.primary, fontWeight: '700' },
+  chipRow: { flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.sm },
+  chip: {
+    paddingHorizontal: t.spacing.lg,
+    paddingVertical: t.spacing.sm,
+    borderRadius: t.radius.pill,
+    backgroundColor: t.colors.surface,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+  },
+  chipActive: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
+  chipText: { ...t.type.label, color: t.colors.text },
+  chipTextActive: { color: t.colors.primary },
+  topUpBtn: {
+    backgroundColor: t.colors.primary,
+    paddingHorizontal: t.spacing.lg,
+    paddingVertical: 14,
+    borderRadius: t.radius.md,
     alignItems: 'center',
-    marginTop: motion.spacing.lg,
+    justifyContent: 'center',
+    minWidth: 110,
   },
-  ctaDisabled: { backgroundColor: '#bbb' },
-  ctaText: { color: 'white', fontWeight: '700', fontSize: 16 },
-  recentHead: { fontSize: 14, fontWeight: '700', color: motion.color.text, marginTop: motion.spacing.xxl, marginBottom: motion.spacing.sm },
+  topUpBtnText: { color: t.colors.textOnPrimary, fontWeight: '700' },
+  topUpNote: { ...t.type.caption, color: t.colors.primary, marginTop: t.spacing.sm },
+  divider: { height: 1, backgroundColor: t.colors.border, marginVertical: t.spacing.xl },
+  cta: {
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.lg,
+    borderRadius: t.radius.pill,
+    alignItems: 'center',
+    marginTop: t.spacing.lg,
+  },
+  ctaDisabled: { backgroundColor: t.colors.skeleton },
+  ctaText: { ...t.type.title, color: t.colors.textOnPrimary, fontWeight: '700' },
+  recentHead: { ...t.type.label, fontWeight: '700', color: t.colors.text, marginTop: t.spacing.xxl, marginBottom: t.spacing.sm },
   payoutRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: motion.spacing.md,
-    marginBottom: motion.spacing.sm,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  payoutAmount: { fontSize: 15, fontWeight: '700', color: motion.color.text },
+  payoutAmount: { ...t.type.body, fontWeight: '700', color: t.colors.text },
   payoutMeta: { alignItems: 'flex-end', gap: 2 },
-  payoutDate: { fontSize: 11, color: '#888' },
+  payoutDate: { ...t.type.micro, fontWeight: '400', color: t.colors.textFaint },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   badgeDot: { width: 8, height: 8, borderRadius: 4 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  muted: { color: '#888', fontSize: 13, marginTop: 4 },
-  error: { color: motion.color.danger, marginTop: motion.spacing.md, textAlign: 'center' },
-  successWrap: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: motion.spacing.md },
-  successTitle: { fontSize: 22, fontWeight: '800', color: motion.color.primary },
-});
+  badgeText: { ...t.type.micro },
+  muted: { ...t.type.caption, color: t.colors.textMuted, marginTop: t.spacing.xs },
+  error: { color: t.colors.danger, marginTop: t.spacing.md, textAlign: 'center' },
+  successWrap: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: t.spacing.md },
+  successTitle: { ...t.type.h1, color: t.colors.primary },
+}));

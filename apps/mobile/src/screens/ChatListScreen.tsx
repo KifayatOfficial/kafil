@@ -1,6 +1,6 @@
 // Conversations list. Each conversation has the most-recent message preview embedded.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -8,6 +8,7 @@ import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { ChatScreen } from './ChatScreen';
 import { SkeletonList } from '../components/Skeleton';
+import { makeStyles, useTheme } from '../theme';
 
 interface Conversation {
   id: string;
@@ -23,6 +24,8 @@ interface Props {
 
 export function ChatListScreen({ onBack }: Props) {
   const { api, session, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const me = session?.userId ?? '';
   const [items, setItems] = useState<Conversation[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function ChatListScreen({ onBack }: Props) {
     <View style={styles.root}>
       <View style={styles.header}>
         <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
+          <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
         <Text style={styles.h1}>{i18n.t(lang, 'nav.messages')}</Text>
         <View style={{ width: 60 }} />
@@ -95,6 +98,7 @@ function ConvRow({
   lastMessage: string | null;
   onPress: () => void;
 }) {
+  const styles = useStyles();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const a = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -116,22 +120,25 @@ function ConvRow({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingTop: 50 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingTop: 50 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: t.spacing.lg,
+    paddingBottom: t.spacing.sm,
   },
-  h1: { fontSize: 18, fontWeight: '700', color: motion.color.text },
-  muted: { color: '#888', fontSize: 13, marginTop: 4 },
+  h1: { ...t.type.h2, color: t.colors.text },
+  muted: { ...t.type.caption, color: t.colors.textMuted, marginTop: t.spacing.xs },
   row: {
-    backgroundColor: motion.color.surface,
-    padding: 16,
-    borderRadius: motion.radius.md,
-    marginBottom: 8,
+    backgroundColor: t.colors.surface,
+    padding: t.spacing.lg,
+    borderRadius: t.radius.lg,
+    marginBottom: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: motion.color.text },
-});
+  rowTitle: { ...t.type.title, color: t.colors.text },
+}));

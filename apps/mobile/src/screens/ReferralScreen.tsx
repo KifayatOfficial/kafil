@@ -12,7 +12,6 @@ import {
   Pressable,
   ScrollView,
   Share,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -23,6 +22,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { SkeletonList } from '../components/Skeleton';
+import { makeStyles, useTheme } from '../theme';
 
 interface ReferralRow {
   id: string;
@@ -46,6 +46,8 @@ const pkr = (minor: number) => `${Math.round(minor / 100)} PKR`;
 
 export function ReferralScreen({ onBack }: Props) {
   const { api, lang, deviceFingerprint } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codeInput, setCodeInput] = useState('');
@@ -109,7 +111,7 @@ export function ReferralScreen({ onBack }: Props) {
     <View style={styles.root}>
       <View style={styles.header}>
         <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
+          <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
         <Text style={styles.h1}>{i18n.t(lang, 'referral.title')}</Text>
         <View style={{ width: 60 }} />
@@ -169,7 +171,7 @@ export function ReferralScreen({ onBack }: Props) {
                   accessibilityLabel={i18n.t(lang, 'referral.claim')}
                 >
                   {claiming ? (
-                    <ActivityIndicator color="white" />
+                    <ActivityIndicator color={colors.textOnPrimary} />
                   ) : (
                     <Text style={styles.claimBtnText}>{i18n.t(lang, 'referral.claim')}</Text>
                   )}
@@ -202,92 +204,103 @@ export function ReferralScreen({ onBack }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingTop: 50 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingTop: 50 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: t.spacing.lg,
+    paddingBottom: t.spacing.sm,
   },
-  h1: { fontSize: 18, fontWeight: '700', color: motion.color.text },
-  subtitle: { color: '#888', fontSize: 14, marginBottom: 16, lineHeight: 20 },
+  h1: { ...t.type.h2, color: t.colors.text },
+  subtitle: { ...t.type.body, color: t.colors.textMuted, marginBottom: t.spacing.lg },
   codeCard: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: 20,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.xl,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  codeLabel: { color: '#888', fontSize: 13 },
+  codeLabel: { ...t.type.caption, color: t.colors.textMuted },
   code: {
     fontSize: 32,
     fontWeight: '800',
     letterSpacing: 4,
-    color: motion.color.primary,
+    color: t.colors.primary,
     marginVertical: 10,
   },
   shareBtn: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 12,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
     paddingHorizontal: 28,
-    borderRadius: motion.radius.pill,
-    marginTop: 4,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.xs,
   },
-  shareBtnText: { color: 'white', fontWeight: '700', fontSize: 16 },
+  shareBtnText: { ...t.type.title, color: t.colors.textOnPrimary, fontWeight: '700' },
   earned: {
     textAlign: 'center',
-    color: motion.color.primary,
+    color: t.colors.primary,
     fontWeight: '700',
     fontSize: 16,
     marginTop: 14,
   },
   claimCard: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: 16,
-    marginTop: 20,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.lg,
+    marginTop: t.spacing.xl,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  claimTitle: { color: motion.color.text, fontWeight: '600', marginBottom: 8 },
-  claimRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  claimTitle: { ...t.type.label, color: t.colors.text, marginBottom: t.spacing.sm },
+  claimRow: { flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' },
   claimInput: {
     flex: 1,
-    backgroundColor: motion.color.bg,
-    borderRadius: motion.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.md,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.md,
     fontSize: 16,
     letterSpacing: 2,
-    color: motion.color.text,
+    color: t.colors.text,
+    borderWidth: 1,
+    borderColor: t.colors.border,
   },
   claimBtn: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: motion.radius.pill,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
+    paddingHorizontal: t.spacing.lg,
+    borderRadius: t.radius.pill,
     minWidth: 80,
     alignItems: 'center',
   },
-  claimBtnDisabled: { backgroundColor: '#bbb' },
-  claimBtnText: { color: 'white', fontWeight: '700' },
+  claimBtnDisabled: { backgroundColor: t.colors.skeleton },
+  claimBtnText: { color: t.colors.textOnPrimary, fontWeight: '700' },
   claimedNotice: {
     textAlign: 'center',
-    color: motion.color.primary,
+    color: t.colors.primary,
     fontWeight: '600',
-    marginTop: 20,
+    marginTop: t.spacing.xl,
   },
-  error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
-  listTitle: { fontSize: 16, fontWeight: '700', color: motion.color.text, marginTop: 28, marginBottom: 10 },
-  muted: { color: '#888', fontSize: 14 },
+  error: { color: t.colors.danger, marginTop: t.spacing.md, textAlign: 'center' },
+  listTitle: { ...t.type.title, fontWeight: '700', color: t.colors.text, marginTop: 28, marginBottom: 10 },
+  muted: { ...t.type.body, color: t.colors.textMuted },
   refRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
     padding: 14,
-    marginBottom: 8,
+    marginBottom: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  refStatus: { color: motion.color.text, fontSize: 14 },
-  refReward: { color: motion.color.primary, fontWeight: '700' },
-});
+  refStatus: { ...t.type.body, color: t.colors.text },
+  refReward: { color: t.colors.primary, fontWeight: '700' },
+}));

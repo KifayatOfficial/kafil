@@ -1,20 +1,84 @@
-/* Bare bones for the bootable shell. Tailwind/shadcn arrives with Tier-B UI. */
+/* Bootable admin shell styling. Mirrors the @kafil/core semantic palette (themeColors)
+ * so web and mobile read as one product. Tailwind/shadcn arrives with Tier-B UI; until
+ * then these CSS vars are the web counterpart of the mobile theme tokens. */
 :root {
   --bg: #faf7f2;
-  --text: #221e1a;
-  --primary: #1f7a4d;
-  --accent: #c2873a;
   --surface: #ffffff;
-  --radius: 10px;
+  --surface-sunken: #f1ebe2;
+  --text: #221e1a;
+  --text-muted: #6b6258;
+  --text-faint: #9a9189;
+  --text-on-primary: #ffffff;
+  --border: #eae3d9;
+  --primary: #1f7a4d;
+  --primary-soft: #e4f1ea;
+  --accent: #c2873a;
+  --danger: #b23a2e;
+  --radius: 12px;
+  --radius-pill: 999px;
+  --shadow-1: 0 1px 3px rgba(58, 46, 31, 0.08);
+  --shadow-2: 0 6px 20px rgba(58, 46, 31, 0.12);
   font-family: system-ui, -apple-system, sans-serif;
+  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #1b1814; --text: #f2ede6; --surface: #241f1a; }
+  :root {
+    --bg: #1b1814;
+    --surface: #241f1a;
+    --surface-sunken: #161310;
+    --text: #f2ede6;
+    --text-muted: #b7aea2;
+    --text-faint: #857c71;
+    --text-on-primary: #0e1f16;
+    --border: #352e27;
+    --primary: #22a668;
+    --primary-soft: #16352a;
+    --accent: #d49a4f;
+    --danger: #e06352;
+    --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
-.card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin: 8px 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
-.btn { background: var(--primary); color: white; border: 0; padding: 10px 16px;
-  border-radius: var(--radius); font-weight: 600; cursor: pointer; }
-.muted { color: #888; font-size: 13px; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 20px; font-weight: 700; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 10px 0;
+  box-shadow: var(--shadow-1);
+  transition: box-shadow 150ms cubic-bezier(0.2, 0, 0, 1), transform 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+.card:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+.btn {
+  background: var(--primary);
+  color: var(--text-on-primary);
+  border: 0;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+.btn:hover { filter: brightness(1.05); }
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.muted { color: var(--text-muted); font-size: 13px; }

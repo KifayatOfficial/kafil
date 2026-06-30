@@ -7,7 +7,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -19,6 +18,7 @@ import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
 import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
+import { makeStyles, useTheme } from '../theme';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -28,6 +28,8 @@ interface Props {
 
 export function PhoneEntryScreen({ onOtpSent }: Props) {
   const { requestOtp, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   useVoicePrompt('onboarding.welcome');
   const [raw, setRaw] = useState('');
   const [busy, setBusy] = useState(false);
@@ -76,6 +78,7 @@ export function PhoneEntryScreen({ onOtpSent }: Props) {
           value={digits}
           onChangeText={setRaw}
           placeholder="3001234567"
+          placeholderTextColor={colors.textFaint}
           keyboardType="number-pad"
           autoComplete="tel"
           maxLength={10}
@@ -96,7 +99,7 @@ export function PhoneEntryScreen({ onOtpSent }: Props) {
       >
         <Animated.View style={[styles.cta, !canSubmit && styles.ctaDisabled, animatedStyle]}>
           {busy ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
             <Text style={styles.ctaText}>{i18n.t(lang, 'common.continue')}</Text>
           )}
@@ -108,11 +111,11 @@ export function PhoneEntryScreen({ onOtpSent }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   root: {
     flex: 1,
-    backgroundColor: motion.color.bg,
-    paddingHorizontal: 24,
+    backgroundColor: t.colors.bg,
+    paddingHorizontal: t.spacing.xl,
     paddingTop: 60,
     alignItems: 'center',
   },
@@ -121,43 +124,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: t.spacing.lg,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: motion.color.text,
+    ...t.type.h1,
+    color: t.colors.text,
     textAlign: 'center',
     flexShrink: 1,
   },
-  subtitle: { color: '#888', marginTop: 6, marginBottom: 32 },
+  subtitle: { ...t.type.body, color: t.colors.textMuted, marginTop: t.spacing.xs, marginBottom: t.spacing.xl },
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    paddingHorizontal: motion.spacing.lg,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    paddingHorizontal: t.spacing.lg,
     width: '100%',
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  cc: { fontSize: 18, color: motion.color.text, marginEnd: motion.spacing.sm },
-  input: { flex: 1, fontSize: 20, color: motion.color.text, paddingVertical: 14 },
-  error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
+  cc: { fontSize: 18, color: t.colors.text, marginEnd: t.spacing.sm },
+  input: { flex: 1, fontSize: 20, color: t.colors.text, paddingVertical: t.spacing.md },
+  error: { ...t.type.body, color: t.colors.danger, marginTop: t.spacing.md, textAlign: 'center' },
   cta: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: motion.radius.pill,
-    marginTop: 24,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
+    paddingHorizontal: t.spacing.xxl,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.xl,
     minWidth: 220,
     alignItems: 'center',
+    ...t.elevation(2),
   },
-  ctaDisabled: { backgroundColor: '#bbb' },
-  ctaText: { color: 'white', fontWeight: '700', fontSize: 18 },
+  ctaDisabled: { backgroundColor: t.colors.borderStrong, ...t.elevation(0) },
+  ctaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 18 },
   help: {
-    color: '#888',
-    fontSize: 12,
-    marginTop: 24,
+    ...t.type.caption,
+    color: t.colors.textMuted,
+    marginTop: t.spacing.xl,
     textAlign: 'center',
     paddingHorizontal: 32,
   },
-});
+}));

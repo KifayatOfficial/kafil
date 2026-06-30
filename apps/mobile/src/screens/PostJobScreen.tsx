@@ -17,7 +17,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -28,6 +27,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { makeStyles, useTheme } from '../theme';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -67,6 +67,8 @@ const FALLBACK_ICON: Record<string, string> = {
 
 export function PostJobScreen({ onClose, onPosted }: Props) {
   const { api, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [phase, setPhase] = useState<Phase>('editing');
   const [error, setError] = useState<string | null>(null);
 
@@ -164,7 +166,7 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
     >
       <View style={styles.root}>
         <Pressable onPress={onClose} hitSlop={16} style={styles.back} accessibilityLabel={i18n.t(lang, 'common.cancel')}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.cancel')}</Text>
+          <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.cancel')}</Text>
         </Pressable>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
@@ -265,7 +267,7 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
           >
             <Animated.View style={[styles.cta, !canSubmit && styles.ctaDisabled, ctaAnimated]}>
               {phase === 'posting' ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
                 <Text style={styles.ctaText}>Post job</Text>
               )}
@@ -281,44 +283,48 @@ export function PostJobScreen({ onClose, onPosted }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingHorizontal: 20, paddingTop: 50 },
-  back: { padding: 8, alignSelf: 'flex-start' },
-  title: { fontSize: 26, fontWeight: '700', color: motion.color.text, marginTop: 12 },
-  label: { color: motion.color.text, marginTop: 18, marginBottom: 6, fontWeight: '600' },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingHorizontal: 20, paddingTop: 50 },
+  back: { padding: t.spacing.sm, alignSelf: 'flex-start' },
+  title: { ...t.type.h1, color: t.colors.text, marginTop: t.spacing.md },
+  label: { ...t.type.label, color: t.colors.text, marginTop: 18, marginBottom: t.spacing.sm - 2 },
   input: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: t.spacing.md,
     fontSize: 15,
-    color: motion.color.text,
+    color: t.colors.text,
   },
   multi: { textAlignVertical: 'top' },
   row: { flexDirection: 'row' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: t.spacing.sm },
   tile: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
     margin: 3,
     paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  tilePicked: { borderColor: motion.color.primary, backgroundColor: '#e8f1ec' },
-  tileLabel: { fontSize: 12, fontWeight: '600', color: motion.color.text, textAlign: 'center' },
-  tileLabelPicked: { color: motion.color.primary },
+  tilePicked: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
+  tileLabel: { ...t.type.micro, fontSize: 12, color: t.colors.text, textAlign: 'center' },
+  tileLabelPicked: { color: t.colors.primary },
   cta: {
-    backgroundColor: motion.color.primary,
+    backgroundColor: t.colors.primary,
     paddingVertical: 14,
-    borderRadius: motion.radius.pill,
-    marginTop: 24,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.xl,
     alignItems: 'center',
+    ...t.elevation(1),
   },
-  ctaDisabled: { backgroundColor: '#bbb' },
-  ctaText: { color: 'white', fontWeight: '700', fontSize: 18 },
-  successTitle: { fontSize: 28, fontWeight: '700', color: motion.color.primary, marginTop: 10 },
-  muted: { color: '#888', fontSize: 13 },
-  error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
-});
+  ctaDisabled: { backgroundColor: t.colors.skeleton, ...t.elevation(0) },
+  ctaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 18 },
+  successTitle: { ...t.type.display, color: t.colors.primary, marginTop: 10 },
+  muted: { ...t.type.caption, color: t.colors.textMuted },
+  error: { ...t.type.body, color: t.colors.danger, marginTop: t.spacing.md, textAlign: 'center' },
+}));

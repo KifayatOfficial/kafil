@@ -96,3 +96,110 @@ export const color = {
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 40 } as const;
 export const radius = { sm: 6, md: 10, lg: 16, pill: 999 } as const;
+
+// §27.9 — semantic theme palettes (light + dark). The flat `color` map above stays the
+// brand contract (and web's CSS-var source); these resolve those brand hues into the
+// *roles* a UI actually paints with, per mode. Consumers pick a palette by scheme and
+// reference roles by meaning (`textMuted`, `border`, `elevated`) rather than raw hex —
+// so a screen written once renders correctly in both light and dark.
+//
+// Brand hues (primary forest-green, ochre accent, trust-band badges) are intentionally
+// shared across modes; only the neutrals, surfaces, borders, and tint washes flip.
+export interface ThemePalette {
+  // Backgrounds & surfaces, low → high elevation.
+  bg: string; // app canvas
+  bgElevated: string; // raised canvas (e.g. sheet backdrop content area)
+  surface: string; // cards, inputs, tiles
+  surfaceElevated: string; // surfaces that float above other surfaces (menus, FAB)
+  surfaceSunken: string; // wells / track backgrounds / inset rows
+  // Text tiers.
+  text: string; // primary content
+  textMuted: string; // secondary / helper text (replaces ad-hoc #666/#888)
+  textFaint: string; // tertiary / disabled / timestamps
+  textOnPrimary: string; // text/icon sitting on a primary-filled surface
+  // Lines & separators.
+  border: string; // hairline dividers, card outlines
+  borderStrong: string; // emphasized outlines (focused input, selected tile)
+  // Brand roles.
+  primary: string; // forest green — primary actions, trust
+  primarySoft: string; // tinted fill behind primary (chips, soft buttons)
+  accent: string; // ochre warmth
+  accentSoft: string; // tinted ochre fill
+  danger: string;
+  dangerSoft: string; // tinted danger fill (destructive backgrounds)
+  warning: string;
+  warningSoft: string;
+  success: string; // semantic success (maps to primary green family)
+  successSoft: string;
+  // Utility.
+  overlay: string; // modal scrim
+  skeleton: string; // loading shimmer block
+  // Trust-band badge hues (shared; §25.2 pairs them with shape + label, never color alone).
+  badgePhone: string;
+  badgeCnic: string;
+  badgeJobs: string;
+  badgeLocal: string;
+}
+
+export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
+  light: {
+    bg: '#FAF7F2',
+    bgElevated: '#FFFFFF',
+    surface: '#FFFFFF',
+    surfaceElevated: '#FFFFFF',
+    surfaceSunken: '#F1EBE2',
+    text: '#221E1A',
+    textMuted: '#6B6258',
+    textFaint: '#9A9189',
+    textOnPrimary: '#FFFFFF',
+    border: '#EAE3D9',
+    borderStrong: '#D8CFC2',
+    primary: '#1F7A4D',
+    primarySoft: '#E4F1EA',
+    accent: '#C2873A',
+    accentSoft: '#F6ECDC',
+    danger: '#B23A2E',
+    dangerSoft: '#F7E2DF',
+    warning: '#C28A1E',
+    warningSoft: '#F8EED7',
+    success: '#1F7A4D',
+    successSoft: '#E4F1EA',
+    overlay: 'rgba(27, 24, 20, 0.45)',
+    skeleton: '#E9E2D9',
+    badgePhone: '#3A6FB2',
+    badgeCnic: '#1F7A4D',
+    badgeJobs: '#C2873A',
+    badgeLocal: '#7E2EB2',
+  },
+  dark: {
+    bg: '#1B1814',
+    bgElevated: '#241F1A',
+    surface: '#241F1A',
+    surfaceElevated: '#2E2823',
+    surfaceSunken: '#161310',
+    text: '#F2EDE6',
+    textMuted: '#B7AEA2',
+    textFaint: '#857C71',
+    textOnPrimary: '#0E1F16',
+    border: '#352E27',
+    borderStrong: '#473E35',
+    primary: '#22A668',
+    primarySoft: '#16352A',
+    accent: '#D49A4F',
+    accentSoft: '#33291A',
+    danger: '#E06352',
+    dangerSoft: '#3A211D',
+    warning: '#D8A53C',
+    warningSoft: '#352B17',
+    success: '#22A668',
+    successSoft: '#16352A',
+    overlay: 'rgba(0, 0, 0, 0.6)',
+    skeleton: '#322B24',
+    badgePhone: '#5B8BD0',
+    badgeCnic: '#22A668',
+    badgeJobs: '#D49A4F',
+    badgeLocal: '#A86BD8',
+  },
+};
+
+export type ThemeScheme = keyof typeof themeColors;

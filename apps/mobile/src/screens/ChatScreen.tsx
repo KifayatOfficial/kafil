@@ -14,7 +14,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -26,6 +25,7 @@ import { useOutbox } from '../outbox/OutboxContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { ReportSheet } from '../components/ReportSheet';
+import { makeStyles, useTheme } from '../theme';
 
 interface Msg {
   id: string;
@@ -61,6 +61,8 @@ interface UiMsg {
 export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
   const { api, session, lang } = useAuth();
   const { enqueue, ops, online, prune } = useOutbox();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const me = session?.userId ?? '';
 
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -202,12 +204,12 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
       <View style={styles.root}>
         <View style={styles.header}>
           <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
-            <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
+            <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
           </Pressable>
           <Text style={styles.h1}>{i18n.t(lang, 'nav.chat')}</Text>
           {otherUserId ? (
             <Pressable onPress={() => setReportOpen(true)} hitSlop={16} accessibilityLabel={i18n.t(lang, 'safety.report')}>
-              <Text style={{ color: motion.color.danger, fontSize: 22, width: 60, textAlign: 'right' }}>⚑</Text>
+              <Text style={{ color: colors.danger, fontSize: 22, width: 60, textAlign: 'right' }}>⚑</Text>
             </Pressable>
           ) : (
             <View style={{ width: 60 }} />
@@ -296,6 +298,8 @@ function Bubble({
   isMe: boolean;
   lang: import('@kafil/core').Lang;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   // body is already redacted by the server before it reaches us (§5/§24/B1).
   const failed = msg.pending === 'failed';
   return (
@@ -311,9 +315,9 @@ function Bubble({
         failed ? styles.bubbleFailed : null,
       ]}
     >
-      <Text style={[styles.bubbleText, isMe && { color: 'white' }]}>{msg.body}</Text>
+      <Text style={[styles.bubbleText, isMe && { color: colors.textOnPrimary }]}>{msg.body}</Text>
       {msg.pending ? (
-        <Text style={[styles.bubbleStatus, isMe && { color: 'rgba(255,255,255,0.85)' }]}>
+        <Text style={[styles.bubbleStatus, isMe && { color: colors.textOnPrimary }]}>
           {failed
             ? i18n.t(lang, 'chat.send_failed')
             : msg.pending === 'queued'
@@ -325,83 +329,85 @@ function Bubble({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingTop: 50 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingTop: 50 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: t.spacing.lg,
+    paddingBottom: t.spacing.sm,
   },
-  h1: { fontSize: 18, fontWeight: '700', color: motion.color.text },
+  h1: { ...t.type.h2, color: t.colors.text },
   redactWarn: {
-    backgroundColor: '#fcefd9',
-    padding: 10,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.warningSoft,
+    padding: t.spacing.sm,
+    marginHorizontal: t.spacing.lg,
+    marginBottom: t.spacing.sm,
+    borderRadius: t.radius.md,
     borderWidth: 1,
-    borderColor: motion.color.warning,
+    borderColor: t.colors.warning,
   },
-  redactWarnText: { color: motion.color.text, fontSize: 12 },
+  redactWarnText: { ...t.type.caption, color: t.colors.text },
   blockedNotice: {
-    backgroundColor: '#f7e3e0',
-    padding: 10,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.dangerSoft,
+    padding: t.spacing.sm,
+    marginHorizontal: t.spacing.lg,
+    marginBottom: t.spacing.sm,
+    borderRadius: t.radius.md,
     borderWidth: 1,
-    borderColor: motion.color.danger,
+    borderColor: t.colors.danger,
   },
-  blockedNoticeText: { color: motion.color.danger, fontSize: 12, textAlign: 'center' },
-  muted: { color: '#888', textAlign: 'center', marginTop: 40 },
+  blockedNoticeText: { ...t.type.caption, color: t.colors.danger, textAlign: 'center' },
+  muted: { ...t.type.body, color: t.colors.textMuted, textAlign: 'center', marginTop: t.spacing.xxl },
   bubble: {
-    padding: 10,
-    borderRadius: motion.radius.md,
+    padding: t.spacing.sm,
+    borderRadius: t.radius.md,
     maxWidth: '78%',
     marginVertical: 2,
   },
   bubbleMe: {
     alignSelf: 'flex-end',
-    backgroundColor: motion.color.primary,
+    backgroundColor: t.colors.primary,
   },
   bubbleThem: {
     alignSelf: 'flex-start',
-    backgroundColor: motion.color.surface,
+    backgroundColor: t.colors.surface,
+    borderWidth: 1,
+    borderColor: t.colors.border,
   },
-  bubbleFlagged: { borderColor: motion.color.warning, borderWidth: 1 },
+  bubbleFlagged: { borderColor: t.colors.warning, borderWidth: 1 },
   bubblePending: { opacity: 0.6 },
-  bubbleFailed: { borderColor: motion.color.danger, borderWidth: 1 },
-  bubbleText: { color: motion.color.text, fontSize: 15 },
-  bubbleStatus: { fontSize: 10, marginTop: 3, color: '#888' },
+  bubbleFailed: { borderColor: t.colors.danger, borderWidth: 1 },
+  bubbleText: { ...t.type.body, color: t.colors.text },
+  bubbleStatus: { ...t.type.micro, marginTop: 3, color: t.colors.textFaint },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 8,
-    gap: 8,
-    backgroundColor: motion.color.surface,
+    padding: t.spacing.sm,
+    gap: t.spacing.sm,
+    backgroundColor: t.colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#e0d8cc',
+    borderTopColor: t.colors.border,
   },
   input: {
     flex: 1,
-    backgroundColor: motion.color.bg,
-    borderRadius: motion.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: t.colors.bg,
+    borderRadius: t.radius.md,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     fontSize: 15,
-    color: motion.color.text,
+    color: t.colors.text,
     maxHeight: 120,
   },
   sendBtn: {
-    backgroundColor: motion.color.primary,
-    paddingHorizontal: 20,
+    backgroundColor: t.colors.primary,
+    paddingHorizontal: t.spacing.xl,
     paddingVertical: 14,
     minHeight: 48,
     justifyContent: 'center',
-    borderRadius: motion.radius.pill,
+    borderRadius: t.radius.pill,
   },
-  sendBtnDisabled: { backgroundColor: '#bbb' },
-  sendBtnText: { color: 'white', fontWeight: '700' },
-});
+  sendBtnDisabled: { backgroundColor: t.colors.borderStrong },
+  sendBtnText: { ...t.type.label, color: t.colors.textOnPrimary },
+}));

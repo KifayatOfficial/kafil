@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -21,6 +20,7 @@ import { i18n, motion, randomUUID, type ReportReason, type ReportTargetType } fr
 import type { Lang } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { haptic } from '../motion/feedback';
+import { makeStyles, useTheme } from '../theme';
 
 interface Props {
   visible: boolean;
@@ -57,6 +57,8 @@ export function ReportSheet({
   onBlocked,
 }: Props) {
   const { api } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [phase, setPhase] = useState<Phase>('choosing');
   const [error, setError] = useState<string | null>(null);
 
@@ -151,7 +153,7 @@ export function ReportSheet({
                 ))}
               </View>
 
-              {phase === 'submitting' ? <ActivityIndicator color={motion.color.primary} /> : null}
+              {phase === 'submitting' ? <ActivityIndicator color={colors.primary} /> : null}
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
               {blockableUserId ? (
@@ -175,51 +177,53 @@ export function ReportSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+const useStyles = makeStyles((t) => ({
+  backdrop: { flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: motion.color.bg,
-    borderTopLeftRadius: motion.radius.lg,
-    borderTopRightRadius: motion.radius.lg,
-    padding: motion.spacing.lg,
-    paddingBottom: motion.spacing.xxl,
+    backgroundColor: t.colors.bgElevated,
+    borderTopLeftRadius: t.radius.lg,
+    borderTopRightRadius: t.radius.lg,
+    padding: t.spacing.lg,
+    paddingBottom: t.spacing.xxl,
+    ...t.elevation(3),
   },
-  h1: { fontSize: 20, fontWeight: '700', color: motion.color.text, textAlign: 'center' },
-  body: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 4, marginBottom: motion.spacing.lg },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: motion.spacing.sm },
+  h1: { ...t.type.h2, color: t.colors.text, textAlign: 'center' },
+  body: { ...t.type.body, color: t.colors.textMuted, textAlign: 'center', marginTop: t.spacing.xs, marginBottom: t.spacing.lg },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: t.spacing.sm },
   reasonTile: {
     width: '30%',
     aspectRatio: 1,
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: motion.spacing.sm,
+    padding: t.spacing.sm,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
   reasonGlyph: { fontSize: 32 },
-  reasonLabel: { fontSize: 12, color: motion.color.text, textAlign: 'center', marginTop: 6 },
+  reasonLabel: { ...t.type.caption, color: t.colors.text, textAlign: 'center', marginTop: t.spacing.xs },
   blockBtn: {
-    marginTop: motion.spacing.lg,
-    padding: motion.spacing.md,
-    borderRadius: motion.radius.md,
+    marginTop: t.spacing.lg,
+    padding: t.spacing.md,
+    borderRadius: t.radius.md,
     borderWidth: 1,
-    borderColor: motion.color.danger,
+    borderColor: t.colors.danger,
     alignItems: 'center',
   },
-  blockBtnText: { color: motion.color.danger, fontWeight: '700', fontSize: 15 },
-  cancelBtn: { marginTop: motion.spacing.md, padding: motion.spacing.md, alignItems: 'center' },
-  cancelBtnText: { color: '#888', fontSize: 15 },
-  error: { color: motion.color.danger, textAlign: 'center', marginTop: motion.spacing.sm },
-  doneWrap: { alignItems: 'center', paddingVertical: motion.spacing.lg },
+  blockBtnText: { ...t.type.label, color: t.colors.danger },
+  cancelBtn: { marginTop: t.spacing.md, padding: t.spacing.md, alignItems: 'center' },
+  cancelBtnText: { ...t.type.label, color: t.colors.textMuted },
+  error: { ...t.type.body, color: t.colors.danger, textAlign: 'center', marginTop: t.spacing.sm },
+  doneWrap: { alignItems: 'center', paddingVertical: t.spacing.lg },
   doneGlyph: { fontSize: 48 },
   primaryBtn: {
-    marginTop: motion.spacing.lg,
-    backgroundColor: motion.color.primary,
-    paddingHorizontal: motion.spacing.xl,
-    paddingVertical: motion.spacing.md,
-    borderRadius: motion.radius.pill,
+    marginTop: t.spacing.lg,
+    backgroundColor: t.colors.primary,
+    paddingHorizontal: t.spacing.xl,
+    paddingVertical: t.spacing.md,
+    borderRadius: t.radius.pill,
   },
-  primaryBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
-});
+  primaryBtnText: { ...t.type.label, color: t.colors.textOnPrimary },
+}));

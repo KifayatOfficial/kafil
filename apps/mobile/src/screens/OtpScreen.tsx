@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -17,6 +16,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
+import { makeStyles, useTheme } from '../theme';
 
 interface Props {
   phoneE164: string;
@@ -26,6 +26,8 @@ interface Props {
 
 export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
   const { verifyOtp, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   useVoicePrompt('onboarding.otp');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -68,7 +70,7 @@ export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
   return (
     <View style={styles.root}>
       <Pressable onPress={onBack} hitSlop={16} style={styles.back} accessibilityLabel={i18n.t(lang, 'common.back')}>
-        <Text style={{ color: motion.color.primary, fontSize: 18 }}>←</Text>
+        <Text style={{ color: colors.primary, fontSize: 18 }}>←</Text>
       </Pressable>
 
       <View style={styles.titleRow}>
@@ -100,7 +102,7 @@ export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {busy ? <ActivityIndicator style={{ marginTop: 16 }} /> : null}
+      {busy ? <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} /> : null}
 
       <Pressable
         onPress={() => void submit(code)}
@@ -121,47 +123,49 @@ export function OtpScreen({ phoneE164, onBack, onVerified }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   root: {
     flex: 1,
-    backgroundColor: motion.color.bg,
-    paddingHorizontal: 24,
+    backgroundColor: t.colors.bg,
+    paddingHorizontal: t.spacing.xl,
     paddingTop: 60,
     alignItems: 'center',
   },
-  back: { alignSelf: 'flex-start', padding: 8 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
-  title: { fontSize: 22, fontWeight: '700', color: motion.color.text, flexShrink: 1 },
-  subtitle: { color: '#888', marginTop: 4, marginBottom: 32 },
-  boxes: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  back: { alignSelf: 'flex-start', padding: t.spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: t.spacing.xl },
+  title: { ...t.type.h2, color: t.colors.text, flexShrink: 1 },
+  subtitle: { ...t.type.body, color: t.colors.textMuted, marginTop: t.spacing.xs, marginBottom: t.spacing.xl },
+  boxes: { flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.sm },
   box: {
     width: 44,
     height: 56,
-    borderRadius: motion.radius.md,
-    backgroundColor: motion.color.surface,
+    borderRadius: t.radius.md,
+    backgroundColor: t.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#e0d8cc',
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  boxFilled: { borderColor: motion.color.primary },
-  boxText: { fontSize: 24, fontWeight: '700', color: motion.color.text },
+  boxFilled: { borderColor: t.colors.primary },
+  boxText: { fontSize: 24, fontWeight: '700', color: t.colors.text },
   hiddenInput: {
     position: 'absolute',
     opacity: 0,
     height: 1,
     width: 1,
   },
-  error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
+  error: { ...t.type.body, color: t.colors.danger, marginTop: t.spacing.md, textAlign: 'center' },
   cta: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: motion.radius.pill,
-    marginTop: 24,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
+    paddingHorizontal: t.spacing.xxl,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.xl,
     minWidth: 220,
     alignItems: 'center',
+    ...t.elevation(2),
   },
-  ctaDisabled: { backgroundColor: '#bbb' },
-  ctaText: { color: 'white', fontWeight: '700', fontSize: 18 },
-});
+  ctaDisabled: { backgroundColor: t.colors.borderStrong, ...t.elevation(0) },
+  ctaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 18 },
+}));

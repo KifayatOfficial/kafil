@@ -7,12 +7,12 @@
 // surface grows large enough to need a real router — keeps the bootable shell tiny.
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { motion } from '@kafil/core';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { OutboxProvider } from './src/outbox/OutboxContext';
 import { VoiceProvider } from './src/voice/VoiceContext';
+import { ThemeProvider, useTheme } from './src/theme';
 import { PhoneEntryScreen } from './src/screens/PhoneEntryScreen';
 import { OtpScreen } from './src/screens/OtpScreen';
 import { RoleScreen } from './src/screens/RoleScreen';
@@ -24,14 +24,40 @@ type OnboardingStep = 'role' | 'worker_specialties' | 'done';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <VoiceProvider>
-        <OutboxProvider>
-          <StatusBar style="auto" />
-          <Flow />
-        </OutboxProvider>
-      </VoiceProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <VoiceProvider>
+          <OutboxProvider>
+            {/* StatusBar bar style follows the resolved scheme (light text on dark bg). */}
+            <ThemedStatusBar />
+            <Flow />
+          </OutboxProvider>
+        </VoiceProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+function ThemedStatusBar() {
+  const { scheme } = useTheme();
+  return <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />;
+}
+
+/** Full-screen centered spinner on the themed canvas — used during bootstrap gaps. */
+function LoadingScreen({ label }: { label?: string }) {
+  const { colors, spacing } = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <ActivityIndicator color={colors.primary} />
+      {label ? <Text style={{ color: colors.textMuted, marginTop: spacing.sm }}>{label}</Text> : null}
+    </View>
   );
 }
 
@@ -76,11 +102,7 @@ function Flow() {
   }, [status, api]);
 
   if (status === 'loading' || (status === 'signedIn' && !boundCheckDone)) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={motion.color.primary} />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   if (status === 'signedOut') {
@@ -122,21 +144,7 @@ function Flow() {
   }
   // Hidden fallback while onboardingStep settles.
   if (onboardingStep === null) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={motion.color.primary} />
-        <Text style={{ color: '#888', marginTop: 8 }}>Loading…</Text>
-      </View>
-    );
+    return <LoadingScreen label="Loading…" />;
   }
   return <HomeScreen />;
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    backgroundColor: motion.color.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

@@ -6,10 +6,11 @@
 // recording — the button simply doesn't render.
 
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import { motion, type VoiceKey } from '@kafil/core';
 import { useVoice } from './VoiceContext';
 import { haptic } from '../motion/feedback';
+import { makeStyles } from '../theme';
 
 /**
  * Autoplay a screen's voice prompt once when it mounts. Safe to call unconditionally:
@@ -34,7 +35,10 @@ export function VoicePromptButton({
   accessibilityLabel: string;
 }) {
   const { play, available } = useVoice();
-  if (!available(promptKey)) return null;
+  const styles = useStyles();
+  if (!available(promptKey)) {
+    return null;
+  }
   return (
     <Pressable
       onPress={() => {
@@ -51,16 +55,16 @@ export function VoicePromptButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((t) => ({
   btn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: motion.color.surface,
+    borderRadius: t.radius.pill,
+    backgroundColor: t.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: motion.color.primary,
+    borderColor: t.colors.primary,
   },
   icon: { fontSize: 20 },
-});
+}));

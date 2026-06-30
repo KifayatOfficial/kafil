@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -22,6 +21,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useOutbox, findOp } from '../outbox/OutboxContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
+import { makeStyles, useTheme } from '../theme';
 
 interface Applicant {
   id: string;
@@ -68,6 +68,8 @@ interface Props {
 
 export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
   const { api, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { enqueue, ops, online, prune } = useOutbox();
   const [job, setJob] = useState<JobDetail | null>(null);
   const [applicants, setApplicants] = useState<Applicant[] | null>(null);
@@ -187,7 +189,7 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
     <View style={styles.root}>
       <View style={styles.header}>
         <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
+          <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
         <Text style={styles.h1} numberOfLines={1}>
           {job?.title ?? '…'}
@@ -216,7 +218,7 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
               accessibilityLabel={i18n.t(lang, 'featured.boost')}
             >
               {boosting ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
                 <Text style={styles.boostBtnText}>⭐ {i18n.t(lang, 'featured.boost')} · 150 PKR</Text>
               )}
@@ -227,7 +229,7 @@ export function MyJobApplicantsScreen({ jobId, onBack }: Props) {
 
       {error ? (
         <View style={styles.errorBanner}>
-          <Text style={{ color: motion.color.warning }}>{error}</Text>
+          <Text style={{ color: colors.warning }}>{error}</Text>
         </View>
       ) : null}
 
@@ -273,6 +275,8 @@ function ApplicantCard({
   canAccept: boolean;
   onAccept: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const wp = app.worker.workerProfile;
@@ -310,7 +314,7 @@ function ApplicantCard({
           {queuedOffline ? (
             <Text style={styles.acceptBtnText}>{i18n.t(lang, 'offline.queued')}</Text>
           ) : accepting ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
             <Text style={styles.acceptBtnText}>
               {app.status === 'accepted'
@@ -326,63 +330,66 @@ function ApplicantCard({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingTop: 50 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingTop: 50 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: t.spacing.lg,
+    paddingBottom: t.spacing.sm,
   },
-  h1: { fontSize: 18, fontWeight: '700', color: motion.color.text, flex: 1, textAlign: 'center' },
-  jobSummary: { paddingHorizontal: 16, paddingBottom: 8 },
-  muted: { color: '#888', fontSize: 13 },
+  h1: { ...t.type.title, color: t.colors.text, flex: 1, textAlign: 'center' },
+  jobSummary: { paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.sm },
+  muted: { ...t.type.caption, color: t.colors.textMuted },
   boostBtn: {
-    marginTop: 10,
-    backgroundColor: motion.color.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: motion.radius.pill,
+    marginTop: t.spacing.sm,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.sm,
+    paddingHorizontal: t.spacing.lg,
+    borderRadius: t.radius.pill,
     alignSelf: 'flex-start',
   },
-  boostBtnDisabled: { backgroundColor: '#bbb' },
-  boostBtnText: { color: 'white', fontWeight: '700' },
+  boostBtnDisabled: { backgroundColor: t.colors.skeleton },
+  boostBtnText: { ...t.type.label, color: t.colors.textOnPrimary, fontWeight: '700' },
   featuredActive: {
-    marginTop: 10,
+    marginTop: t.spacing.sm,
     alignSelf: 'flex-start',
-    backgroundColor: '#e8f1ec',
-    borderColor: motion.color.primary,
+    backgroundColor: t.colors.primarySoft,
+    borderColor: t.colors.primary,
     borderWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: motion.radius.pill,
+    paddingVertical: t.spacing.xs,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.pill,
   },
-  featuredActiveText: { color: motion.color.primary, fontWeight: '700', fontSize: 13 },
+  featuredActiveText: { ...t.type.caption, color: t.colors.primary, fontWeight: '700' },
   errorBanner: {
-    backgroundColor: '#fcefd9',
-    padding: 10,
-    marginHorizontal: 16,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.warningSoft,
+    padding: t.spacing.sm,
+    marginHorizontal: t.spacing.lg,
+    borderRadius: t.radius.lg,
     borderWidth: 1,
-    borderColor: motion.color.warning,
+    borderColor: t.colors.warning,
   },
   card: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: 16,
-    marginBottom: 10,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.lg,
+    marginBottom: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  workerName: { fontSize: 16, fontWeight: '600', color: motion.color.text },
-  message: { color: motion.color.text, marginTop: 8, fontStyle: 'italic' },
+  workerName: { ...t.type.title, color: t.colors.text },
+  message: { ...t.type.body, color: t.colors.text, marginTop: t.spacing.sm, fontStyle: 'italic' },
   acceptBtn: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 10,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.sm,
     paddingHorizontal: 18,
-    borderRadius: motion.radius.pill,
+    borderRadius: t.radius.pill,
     marginTop: 14,
     alignSelf: 'flex-start',
   },
-  acceptBtnDisabled: { backgroundColor: '#bbb' },
-  acceptBtnText: { color: 'white', fontWeight: '700' },
-});
+  acceptBtnDisabled: { backgroundColor: t.colors.skeleton },
+  acceptBtnText: { ...t.type.label, color: t.colors.textOnPrimary, fontWeight: '700' },
+}));

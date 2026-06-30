@@ -4,7 +4,7 @@
 // Tabbed if the user holds both roles.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion, type Lang } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -12,6 +12,7 @@ import { usePressScale, useStateFlash } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { SkeletonList } from '../components/Skeleton';
 import { MyJobApplicantsScreen } from './MyJobApplicantsScreen';
+import { makeStyles, useTheme } from '../theme';
 
 interface Application {
   id: string;
@@ -40,6 +41,8 @@ type Tab = 'worker' | 'employer';
 
 export function MyActivityScreen({ onBack }: Props) {
   const { api, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [roles, setRoles] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>('worker');
   const [appsLoading, setAppsLoading] = useState(false);
@@ -98,7 +101,7 @@ export function MyActivityScreen({ onBack }: Props) {
     <View style={styles.root}>
       <View style={styles.header}>
         <Pressable onPress={onBack} hitSlop={16} accessibilityLabel={i18n.t(lang, 'common.back')}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
+          <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
         <Text style={styles.h1}>{i18n.t(lang, 'activity.title')}</Text>
         <View style={{ width: 60 }} />
@@ -143,6 +146,7 @@ function TabButton({
   active: boolean;
   onPress: () => void;
 }) {
+  const styles = useStyles();
   // §27 class-B — flash on tap so a local tab switch feels reactive.
   const { opacity, flash } = useStateFlash();
   const anim = useAnimatedStyle(() => ({ opacity: opacity.value }));
@@ -165,14 +169,16 @@ function TabButton({
 }
 
 function ApplicationCard({ app, lang }: { app: Application; lang: Lang }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const statusColor =
     app.status === 'accepted'
-      ? motion.color.primary
+      ? colors.primary
       : app.status === 'rejected'
-        ? motion.color.danger
-        : motion.color.text;
+        ? colors.danger
+        : colors.text;
   return (
     <Pressable
       onPressIn={() => {
@@ -199,6 +205,7 @@ function ApplicationCard({ app, lang }: { app: Application; lang: Lang }) {
 void (null as unknown as Lang);
 
 function JobMineCard({ job, onPress }: { job: JobMine; onPress: () => void }) {
+  const styles = useStyles();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const openSlots = job.slots.filter((s) => s.status === 'open').length;
@@ -225,41 +232,46 @@ function JobMineCard({ job, onPress }: { job: JobMine; onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingTop: 50 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingTop: 50 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: t.spacing.lg,
+    paddingBottom: t.spacing.md,
   },
-  h1: { fontSize: 20, fontWeight: '700', color: motion.color.text },
+  h1: { ...t.type.h1, color: t.colors.text },
   tabs: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
+    paddingHorizontal: t.spacing.lg,
+    paddingBottom: t.spacing.sm,
+    gap: t.spacing.sm,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.pill,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.pill,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: t.colors.border,
   },
-  tabActive: { backgroundColor: motion.color.primary },
-  tabText: { color: motion.color.text, fontWeight: '600' },
-  tabTextActive: { color: 'white' },
+  tabActive: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+  tabText: { ...t.type.label, color: t.colors.text },
+  tabTextActive: { color: t.colors.textOnPrimary },
   card: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: 16,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.lg,
     marginVertical: 6,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: motion.color.text, marginBottom: 4 },
-  muted: { color: '#888', fontSize: 13, marginTop: 2 },
+  cardTitle: { ...t.type.title, color: t.colors.text, marginBottom: t.spacing.xs },
+  muted: { ...t.type.caption, color: t.colors.textMuted, marginTop: 2 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: '600' },
-});
+  statusText: { ...t.type.micro, fontWeight: '600' },
+}));

@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { SkeletonList } from '../components/Skeleton';
 import { VoicePromptButton, useVoicePrompt } from '../voice/VoicePromptButton';
+import { makeStyles, useTheme } from '../theme';
 
 interface SpecialtyRow {
   id: string;
@@ -42,6 +42,8 @@ const FALLBACK_ICON: Record<string, string> = {
 
 export function WorkerSpecialtiesScreen({ onDone }: Props) {
   const { api, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   useVoicePrompt('onboarding.specialties');
   const [items, setItems] = useState<SpecialtyRow[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -151,7 +153,7 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
             ctaAnimated,
           ]}
         >
-          {saving ? <ActivityIndicator color="white" /> : (
+          {saving ? <ActivityIndicator color={colors.textOnPrimary} /> : (
             <Text style={styles.ctaText}>
               {i18n.t(lang, 'common.continue')} {picked.size > 0 ? `(${picked.size})` : ''}
             </Text>
@@ -162,35 +164,37 @@ export function WorkerSpecialtiesScreen({ onDone }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, padding: 24, paddingTop: 60 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  title: { fontSize: 24, fontWeight: '700', color: motion.color.text, flexShrink: 1 },
-  subtitle: { color: '#888', marginBottom: 16 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingBottom: 24 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, padding: t.spacing.xl, paddingTop: 60 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: t.spacing.xs },
+  title: { ...t.type.h2, color: t.colors.text, flexShrink: 1 },
+  subtitle: { ...t.type.body, color: t.colors.textMuted, marginBottom: t.spacing.lg },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingBottom: t.spacing.xl },
   tile: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    margin: 4,
-    paddingVertical: 24,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    margin: t.spacing.xs,
+    paddingVertical: t.spacing.xl,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  tilePicked: { borderColor: motion.color.primary, backgroundColor: '#e8f1ec' },
-  tileLabel: { fontSize: 13, fontWeight: '600', color: motion.color.text, textAlign: 'center' },
-  tileLabelPicked: { color: motion.color.primary },
+  tilePicked: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
+  tileLabel: { ...t.type.caption, fontWeight: '600', color: t.colors.text, textAlign: 'center' },
+  tileLabelPicked: { color: t.colors.primary },
   cta: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: motion.radius.pill,
-    marginTop: 8,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
+    paddingHorizontal: t.spacing.xxl,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.sm,
     minWidth: 220,
     alignSelf: 'center',
     alignItems: 'center',
+    ...t.elevation(2),
   },
-  ctaDisabled: { backgroundColor: '#bbb' },
-  ctaText: { color: 'white', fontWeight: '700', fontSize: 18 },
-  error: { color: motion.color.danger, marginTop: 8, textAlign: 'center' },
-});
+  ctaDisabled: { backgroundColor: t.colors.borderStrong, ...t.elevation(0) },
+  ctaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 18 },
+  error: { ...t.type.body, color: t.colors.danger, marginTop: t.spacing.sm, textAlign: 'center' },
+}));

@@ -7,11 +7,12 @@
 //   {items === null ? <SkeletonList rows={5} /> : items.map(...)}
 
 import { useEffect } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { motion } from '@kafil/core';
+import { makeStyles } from '../theme';
 
 export function SkeletonBlock({ style }: { style?: ViewStyle }) {
+  const styles = useStyles();
   const o = useSharedValue(0.5);
   useEffect(() => {
     o.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
@@ -22,6 +23,7 @@ export function SkeletonBlock({ style }: { style?: ViewStyle }) {
 
 /** A card-shaped skeleton row matching the job/conversation card silhouette. */
 export function SkeletonCard() {
+  const styles = useStyles();
   return (
     <View style={styles.card}>
       <SkeletonBlock style={{ width: '60%', height: 16 }} />
@@ -40,12 +42,15 @@ export function SkeletonList({ rows = 5 }: { rows?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
-  block: { backgroundColor: '#e6e0d8', borderRadius: motion.radius.sm },
+const useStyles = makeStyles((t) => ({
+  block: { backgroundColor: t.colors.skeleton, borderRadius: t.radius.sm },
   card: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: motion.spacing.lg,
-    marginVertical: motion.spacing.sm,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.lg,
+    marginVertical: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-});
+}));

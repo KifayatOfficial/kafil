@@ -1,12 +1,13 @@
 // Authenticated home — job feed. Tapping a card opens JobDetailScreen.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
+import { makeStyles, useTheme, ThemeToggle } from '../theme';
 import { JobDetailScreen } from './JobDetailScreen';
 import { PostJobScreen } from './PostJobScreen';
 import { MyActivityScreen } from './MyActivityScreen';
@@ -32,6 +33,8 @@ type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet' | 'referrals';
 
 export function HomeScreen() {
   const { api, signOut, inCooldown, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
@@ -109,8 +112,9 @@ export function HomeScreen() {
           <Text style={styles.h1}>{i18n.t(lang, 'app.name')}</Text>
           <Text style={styles.muted}>{i18n.t(lang, 'nav.home')}</Text>
         </View>
-        <Pressable onPress={() => void signOut()} hitSlop={10} accessibilityLabel={i18n.t(lang, 'common.sign_out')}>
-          <Text style={{ color: motion.color.primary }}>{i18n.t(lang, 'common.sign_out')}</Text>
+        <ThemeToggle />
+        <Pressable onPress={() => void signOut()} hitSlop={10} accessibilityLabel={i18n.t(lang, 'common.sign_out')} style={{ marginStart: 12 }}>
+          <Text style={{ color: colors.primary }}>{i18n.t(lang, 'common.sign_out')}</Text>
         </Pressable>
       </View>
 
@@ -129,7 +133,7 @@ export function HomeScreen() {
         </Pressable>
         {isEmployer ? (
           <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]} accessibilityLabel={i18n.t(lang, 'nav.post_job')}>
-            <Text style={[styles.actionBtnText, { color: 'white' }]}>{i18n.t(lang, 'nav.post_job')}</Text>
+            <Text style={[styles.actionBtnText, styles.actionBtnTextOnPrimary]}>{i18n.t(lang, 'nav.post_job')}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -143,7 +147,7 @@ export function HomeScreen() {
 
       <ScrollView style={{ flex: 1 }}>
         {error ? (
-          <Text style={[styles.muted, { color: motion.color.danger }]}>{error}</Text>
+          <Text style={[styles.muted, { color: colors.danger }]}>{error}</Text>
         ) : jobs === null ? (
           <SkeletonList rows={5} />
         ) : jobs.length === 0 ? (
@@ -159,6 +163,7 @@ export function HomeScreen() {
 }
 
 function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
+  const styles = useStyles();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const { lang } = useAuth();
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -186,43 +191,47 @@ function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingHorizontal: 16, paddingTop: 60 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingHorizontal: t.spacing.lg, paddingTop: 60 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: t.spacing.lg },
   mascot: { width: 60, height: 60 },
-  h1: { fontSize: 24, fontWeight: '700', color: motion.color.text },
-  muted: { color: '#888', fontSize: 13 },
+  h1: { ...t.type.h1, color: t.colors.text },
+  muted: { ...t.type.caption, color: t.colors.textMuted },
   cooldownBanner: {
-    backgroundColor: '#fcefd9',
+    backgroundColor: t.colors.warningSoft,
     padding: 14,
-    borderRadius: motion.radius.md,
-    marginBottom: 16,
+    borderRadius: t.radius.lg,
+    marginBottom: t.spacing.lg,
     borderWidth: 1,
-    borderColor: motion.color.warning,
+    borderColor: t.colors.warning,
+    ...t.elevation(1),
   },
-  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  actionRow: { flexDirection: 'row', gap: t.spacing.sm, marginBottom: t.spacing.md },
   actionBtn: {
     flex: 1,
-    backgroundColor: motion.color.surface,
-    paddingVertical: 12,
-    borderRadius: motion.radius.pill,
+    backgroundColor: t.colors.surface,
+    paddingVertical: t.spacing.md,
+    borderRadius: t.radius.pill,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  actionBtnPrimary: { backgroundColor: motion.color.primary },
-  actionBtnText: { color: motion.color.text, fontWeight: '600' },
-  cooldownTitle: { fontWeight: '700', color: motion.color.warning, marginBottom: 4 },
-  cooldownBody: { color: motion.color.text },
+  actionBtnPrimary: { backgroundColor: t.colors.primary, borderColor: t.colors.primary },
+  actionBtnText: { ...t.type.label, color: t.colors.text },
+  actionBtnTextOnPrimary: { color: t.colors.textOnPrimary },
+  cooldownTitle: { ...t.type.title, color: t.colors.warning, marginBottom: t.spacing.xs },
+  cooldownBody: { ...t.type.body, color: t.colors.text },
   card: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
-    padding: motion.spacing.lg,
-    marginVertical: motion.spacing.sm,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.lg,
+    padding: t.spacing.lg,
+    marginVertical: t.spacing.sm,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    ...t.elevation(1),
   },
-  cardFeatured: { borderWidth: 1, borderColor: motion.color.primary, backgroundColor: '#f3f8f5' },
-  featuredBadge: { color: motion.color.primary, fontWeight: '700', fontSize: 12, marginBottom: 4 },
-  title: { fontSize: 16, fontWeight: '600', color: motion.color.text, marginBottom: 4 },
-});
+  cardFeatured: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
+  featuredBadge: { ...t.type.caption, color: t.colors.primary, fontWeight: '700', marginBottom: t.spacing.xs },
+  title: { ...t.type.title, color: t.colors.text, marginBottom: t.spacing.xs },
+}));

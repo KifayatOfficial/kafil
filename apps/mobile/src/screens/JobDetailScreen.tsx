@@ -13,7 +13,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -27,6 +26,7 @@ import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
 import { SkeletonList } from '../components/Skeleton';
 import { ReportSheet } from '../components/ReportSheet';
+import { makeStyles, useTheme } from '../theme';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
 
@@ -54,6 +54,8 @@ type Phase = 'loading' | 'ready' | 'applying' | 'queued' | 'applied' | 'stale' |
 
 export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
   const { api, lang } = useAuth();
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { enqueue, ops, online, prune } = useOutbox();
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
@@ -150,7 +152,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
     >
       <View style={styles.root}>
         <Pressable onPress={onClose} hitSlop={16} style={styles.back} accessibilityLabel={i18n.t(lang, 'common.back')}>
-          <Text style={{ color: motion.color.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
+          <Text style={{ color: colors.primary, fontSize: 18 }}>← {i18n.t(lang, 'common.back')}</Text>
         </Pressable>
 
         {phase === 'loading' ? (
@@ -233,7 +235,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
                 ]}
               >
                 {phase === 'applying' ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color={colors.textOnPrimary} />
                 ) : phase === 'queued' ? (
                   <Text style={styles.ctaText}>{i18n.t(lang, 'offline.queued')}</Text>
                 ) : (
@@ -262,6 +264,7 @@ export function JobDetailScreen({ jobId, onClose, onApplied }: Props) {
 }
 
 function MetaPill({ label }: { label: string }) {
+  const styles = useStyles();
   if (!label) return null;
   return (
     <View style={styles.metaPill}>
@@ -271,6 +274,7 @@ function MetaPill({ label }: { label: string }) {
 }
 
 function SuccessView({ job, lang }: { job: Job; lang: import('@kafil/core').Lang }) {
+  const styles = useStyles();
   // §27 class-D reward — plays ONCE (loop:false), not the looping idle mascot.
   return (
     <View style={styles.successWrap}>
@@ -290,6 +294,7 @@ function StaleView({
   onBack: () => void;
   lang: import('@kafil/core').Lang;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.staleWrap}>
       <Text style={styles.staleEmoji}>⌛</Text>
@@ -302,71 +307,75 @@ function StaleView({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: motion.color.bg, paddingHorizontal: 20, paddingTop: 50 },
-  back: { padding: 8, alignSelf: 'flex-start' },
-  title: { fontSize: 26, fontWeight: '700', color: motion.color.text, marginTop: 12 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.bg, paddingHorizontal: 20, paddingTop: 50 },
+  back: { padding: t.spacing.sm, alignSelf: 'flex-start' },
+  title: { ...t.type.h1, color: t.colors.text, marginTop: t.spacing.md },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, marginTop: 14 },
   metaPill: {
-    backgroundColor: motion.color.surface,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: motion.radius.pill,
+    backgroundColor: t.colors.primarySoft,
+    paddingVertical: t.spacing.xs + 2,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.pill,
   },
-  metaPillText: { color: motion.color.text, fontSize: 13 },
-  description: { color: motion.color.text, fontSize: 15, lineHeight: 22, marginTop: 18 },
-  label: { color: motion.color.text, marginTop: 22, marginBottom: 6, fontWeight: '600' },
+  metaPillText: { ...t.type.caption, color: t.colors.primary },
+  description: { ...t.type.body, color: t.colors.text, marginTop: 18 },
+  label: { ...t.type.label, color: t.colors.text, marginTop: 22, marginBottom: t.spacing.sm - 2 },
   input: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: t.spacing.md,
     fontSize: 15,
-    color: motion.color.text,
+    color: t.colors.text,
   },
   offlineBanner: {
-    backgroundColor: motion.color.surface,
-    borderRadius: motion.radius.md,
+    backgroundColor: t.colors.warningSoft,
+    borderRadius: t.radius.md,
     borderLeftWidth: 3,
-    borderLeftColor: motion.color.warning,
+    borderLeftColor: t.colors.warning,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 16,
+    paddingHorizontal: t.spacing.md,
+    marginTop: t.spacing.lg,
   },
-  offlineText: { color: motion.color.text, fontSize: 13 },
+  offlineText: { ...t.type.caption, color: t.colors.text },
   safetyNote: {
-    color: motion.color.warning,
-    fontSize: 12,
-    marginTop: 16,
+    ...t.type.caption,
+    color: t.colors.warning,
+    marginTop: t.spacing.lg,
     fontStyle: 'italic',
   },
   reportLink: {
-    color: motion.color.danger,
+    color: t.colors.danger,
     fontWeight: '700',
     textDecorationLine: 'underline',
     fontStyle: 'normal',
   },
-  error: { color: motion.color.danger, marginTop: 12, textAlign: 'center' },
+  error: { ...t.type.body, color: t.colors.danger, marginTop: t.spacing.md, textAlign: 'center' },
   cta: {
-    backgroundColor: motion.color.primary,
+    backgroundColor: t.colors.primary,
     paddingVertical: 14,
-    borderRadius: motion.radius.pill,
-    marginTop: 24,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.xl,
     alignItems: 'center',
+    ...t.elevation(1),
   },
-  ctaDisabled: { backgroundColor: '#bbb' },
-  ctaText: { color: 'white', fontWeight: '700', fontSize: 18 },
-  muted: { color: '#888', fontSize: 14, textAlign: 'center', marginTop: 8 },
+  ctaDisabled: { backgroundColor: t.colors.skeleton, ...t.elevation(0) },
+  ctaText: { ...t.type.label, color: t.colors.textOnPrimary, fontSize: 18 },
+  muted: { ...t.type.body, color: t.colors.textMuted, textAlign: 'center', marginTop: t.spacing.sm },
   successWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  successTitle: { fontSize: 28, fontWeight: '700', color: motion.color.primary, marginTop: 10 },
+  successTitle: { ...t.type.display, color: t.colors.primary, marginTop: 10 },
   staleWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
-  staleEmoji: { fontSize: 64, marginBottom: 12 },
-  staleTitle: { fontSize: 22, fontWeight: '700', color: motion.color.text, marginBottom: 8 },
+  staleEmoji: { fontSize: 64, marginBottom: t.spacing.md },
+  staleTitle: { ...t.type.h2, color: t.colors.text, marginBottom: t.spacing.sm },
   staleCta: {
-    backgroundColor: motion.color.primary,
-    paddingVertical: 12,
+    backgroundColor: t.colors.primary,
+    paddingVertical: t.spacing.md,
     paddingHorizontal: 32,
-    borderRadius: motion.radius.pill,
-    marginTop: 16,
+    borderRadius: t.radius.pill,
+    marginTop: t.spacing.lg,
+    ...t.elevation(1),
   },
-});
+}));
