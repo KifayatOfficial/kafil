@@ -159,7 +159,7 @@ function MomentOverlay({ moment, onDismiss }: { moment: ActiveMoment; onDismiss:
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Tap-anywhere-to-dismiss backdrop. Non-blocking once faded. */}
       <Animated.View
-        style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay }, backdropStyle]}
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.overlay }, backdropStyle]}
         pointerEvents="auto"
       >
         <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} accessibilityLabel="Dismiss" />

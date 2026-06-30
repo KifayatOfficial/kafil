@@ -46,7 +46,7 @@ export function PressableScale({ children, style, haptic = motion.hapticToken.TA
       }}
       {...rest}
     >
-      <Animated.View style={[style, reduceMotion ? undefined : animated]}>{children}</Animated.View>
+      <Animated.View style={[style as ViewStyle, reduceMotion ? undefined : animated]}>{children}</Animated.View>
     </Pressable>
   );
 }

@@ -1,6 +1,7 @@
 // Authenticated home — job feed. Tapping a card opens JobDetailScreen.
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
@@ -199,32 +200,47 @@ export function HomeScreen() {
         </View>
       ) : null}
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={jobs === null || jobs.length === 0 || error ? { flexGrow: 1 } : undefined}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
-        }
-      >
-        <StatefulView
-          status={jobs === null ? (error ? 'error' : 'loading') : 'ready'}
-          error={error}
-          onRetry={() => setReloadKey((k) => k + 1)}
-          empty={jobs !== null && jobs.length === 0}
-          emptyTitle={i18n.t(lang, 'empty.no_jobs')}
-          emptyHint={i18n.t(lang, 'empty.jobs_hint')}
-          emptyTips={[
-            `📍 ${i18n.t(lang, 'empty.tip_radius')}`,
-            `🕐 ${i18n.t(lang, 'empty.tip_time')}`,
-            `🔔 ${i18n.t(lang, 'empty.tip_notify')}`,
-          ]}
-          emptyAction={isEmployer ? { label: i18n.t(lang, 'nav.post_job'), onPress: () => setModal('post') } : undefined}
+      {jobs && jobs.length > 0 ? (
+        // §P1.3 — FlashList virtualizes the feed so a long list stays at 60fps and flat
+        // memory on low-RAM Androids (a ScrollView-of-cards would crash there at scale).
+        <FlashList
+          data={jobs}
+          keyExtractor={(j) => j.id}
+          renderItem={({ item }) => <JobCard job={item} onPress={() => setOpenJobId(item.id)} />}
+          estimatedItemSize={120}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+          }
+        />
+      ) : (
+        // Loading / error / empty: StatefulView owns these (mascot + retry + on-ramp).
+        // Kept in a ScrollView so pull-to-refresh works even on the empty/error screens.
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+          }
         >
-          {(jobs ?? []).map((j) => (
-            <JobCard key={j.id} job={j} onPress={() => setOpenJobId(j.id)} />
-          ))}
-        </StatefulView>
-      </ScrollView>
+          <StatefulView
+            status={jobs === null ? (error ? 'error' : 'loading') : 'ready'}
+            error={error}
+            onRetry={() => setReloadKey((k) => k + 1)}
+            empty={jobs !== null && jobs.length === 0}
+            emptyTitle={i18n.t(lang, 'empty.no_jobs')}
+            emptyHint={i18n.t(lang, 'empty.jobs_hint')}
+            emptyTips={[
+              `📍 ${i18n.t(lang, 'empty.tip_radius')}`,
+              `🕐 ${i18n.t(lang, 'empty.tip_time')}`,
+              `🔔 ${i18n.t(lang, 'empty.tip_notify')}`,
+            ]}
+            emptyAction={isEmployer ? { label: i18n.t(lang, 'nav.post_job'), onPress: () => setModal('post') } : undefined}
+          >
+            {null}
+          </StatefulView>
+        </ScrollView>
+      )}
 
       {firstApplyCoach.show ? (
         <CoachMark message={i18n.t(lang, 'coach.first_apply')} onDismiss={firstApplyCoach.dismiss} />
