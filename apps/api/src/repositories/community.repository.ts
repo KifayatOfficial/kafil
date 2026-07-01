@@ -75,12 +75,26 @@ export const communityRepository = {
     return prisma.post.findUnique({ where: { id } });
   },
 
-  /** Visible posts in a group — pinned first, then newest. */
-  listPosts(groupId: string, limit = 50) {
+  /**
+   * §P1.4b — pinned posts are always shown at the top and are few, so they're fetched
+   * unpaginated (page 1 only). The high-volume NON-pinned tail is keyset-paginated
+   * separately (listPostsPage) — this keeps the cursor tuple a clean (createdAt, id)
+   * instead of having to encode the pinned boolean into it.
+   */
+  listPinnedPosts(groupId: string) {
     return prisma.post.findMany({
-      where: { groupId, status: 'visible' },
-      orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
+      where: { groupId, status: 'visible', pinned: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: { author: { select: authorSelect } },
+    });
+  },
+
+  /** Visible NON-pinned posts, newest-first, keyset-paginated. Caller passes take=limit+1. */
+  listPostsPage(args: { groupId: string; take: number; cursorWhere?: object }) {
+    return prisma.post.findMany({
+      where: { groupId: args.groupId, status: 'visible', pinned: false, ...(args.cursorWhere ?? {}) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: args.take,
       include: { author: { select: authorSelect } },
     });
   },

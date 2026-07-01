@@ -178,22 +178,41 @@ export const communityService = {
     return ok({ postId, redacted: scan.flagged });
   },
 
-  async listPosts(args: { groupId: string }): Promise<
-    Result<Array<{ id: string; kind: string; body: string | null; images: string[]; pinned: boolean; commentCount: number; createdAt: Date; author: { id: string; displayName: string; photoUrl: string | null } }>>
+  async listPosts(args: { groupId: string; cursor?: string | null; limit?: number }): Promise<
+    Result<{
+      items: Array<{ id: string; kind: string; body: string | null; images: string[]; pinned: boolean; commentCount: number; createdAt: Date; author: { id: string; displayName: string; photoUrl: string | null } }>;
+      nextCursor: string | null;
+    }>
   > {
-    const rows = await communityRepository.listPosts(args.groupId);
-    return ok(
-      rows.map((p) => ({
-        id: p.id,
-        kind: p.kind,
-        body: p.body,
-        images: (p.images as unknown as string[]) ?? [],
-        pinned: p.pinned,
-        commentCount: p.commentCount,
-        createdAt: p.createdAt,
-        author: p.author,
-      })),
-    );
+    // §P1.4b — pinned posts ride on page 1 only (they're few + always-on-top); the
+    // non-pinned tail is keyset-paginated. So the cursor addresses only the tail, and
+    // pinned posts never duplicate across pages.
+    const limit = clampLimit(args.limit);
+    const cursor = decodeCursor(args.cursor);
+    const shape = (p: {
+      id: string; kind: string; body: string | null; images: unknown; pinned: boolean;
+      commentCount: number; createdAt: Date; author: { id: string; displayName: string; photoUrl: string | null };
+    }) => ({
+      id: p.id,
+      kind: p.kind,
+      body: p.body,
+      images: (p.images as unknown as string[]) ?? [],
+      pinned: p.pinned,
+      commentCount: p.commentCount,
+      createdAt: p.createdAt,
+      author: p.author,
+    });
+
+    const tailRows = await communityRepository.listPostsPage({
+      groupId: args.groupId,
+      take: limit + 1,
+      cursorWhere: cursorWhere(cursor),
+    });
+    const { items: tail, nextCursor } = paginate(tailRows, limit);
+
+    // Prepend pinned posts only on the first page (no cursor).
+    const pinned = cursor ? [] : await communityRepository.listPinnedPosts(args.groupId);
+    return ok({ items: [...pinned.map(shape), ...tail.map(shape)], nextCursor });
   },
 
   // ── comments ─────────────────────────────────────────────────────────────

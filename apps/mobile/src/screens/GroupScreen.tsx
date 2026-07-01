@@ -51,11 +51,38 @@ export function GroupScreen({ groupId, groupName, joined: joinedInitial, onBack 
   const [refreshing, setRefreshing] = useState(false);
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [report, setReport] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await api.get<{ ok: true; posts: PostRow[] }>(`/api/groups/${groupId}/posts`);
-    if (r.success) setPosts((r.data as { posts: PostRow[] }).posts);
+    const r = await api.get<{ ok: true; posts: PostRow[]; nextCursor?: string | null }>(`/api/groups/${groupId}/posts`);
+    if (r.success) {
+      const data = r.data as { posts: PostRow[]; nextCursor?: string | null };
+      setPosts(data.posts);
+      setNextCursor(data.nextCursor ?? null);
+    }
   }, [api, groupId]);
+
+  // §P1.4b — page the non-pinned tail as the feed scrolls; dedupe by id.
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.get<{ ok: true; posts: PostRow[]; nextCursor?: string | null }>(
+        `/api/groups/${groupId}/posts?cursor=${encodeURIComponent(nextCursor)}`,
+      );
+      if (r.success) {
+        const data = r.data as { posts: PostRow[]; nextCursor?: string | null };
+        setPosts((cur) => {
+          const have = new Set((cur ?? []).map((p) => p.id));
+          return [...(cur ?? []), ...data.posts.filter((p) => !have.has(p.id))];
+        });
+        setNextCursor(data.nextCursor ?? null);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [api, groupId, nextCursor, loadingMore]);
 
   useEffect(() => {
     void load();
@@ -121,6 +148,11 @@ export function GroupScreen({ groupId, groupName, joined: joinedInitial, onBack 
             )}
             estimatedItemSize={140}
             contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+            onEndReached={() => void loadMore()}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingMore ? <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} /> : null
+            }
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           />
         ) : (

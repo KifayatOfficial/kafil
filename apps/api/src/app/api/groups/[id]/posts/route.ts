@@ -12,9 +12,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const actor = await getActorOrDevStub(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   const { id } = await ctx.params;
-  const res = await communityService.listPosts({ groupId: id });
+  const url = new URL(req.url);
+  const cursor = url.searchParams.get('cursor');
+  const limitParam = url.searchParams.get('limit');
+  const res = await communityService.listPosts({
+    groupId: id,
+    cursor,
+    limit: limitParam ? Number.parseInt(limitParam, 10) : undefined,
+  });
   if (!res.ok) return NextResponse.json(res, { status: statusFor(res.code) });
-  return NextResponse.json({ ok: true, posts: res.value });
+  return NextResponse.json({ ok: true, posts: res.value.items, nextCursor: res.value.nextCursor });
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {

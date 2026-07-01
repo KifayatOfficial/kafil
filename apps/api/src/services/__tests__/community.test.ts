@@ -117,9 +117,40 @@ describe('community — posts', () => {
     const list = await communityService.listPosts({ groupId });
     expect(list.ok).toBe(true);
     if (list.ok) {
-      expect(list.value[0]!.id).toBe(p1.value.postId);
-      expect(list.value[0]!.pinned).toBe(true);
+      expect(list.value.items[0]!.id).toBe(p1.value.postId);
+      expect(list.value.items[0]!.pinned).toBe(true);
     }
+  });
+
+  it('paginates the non-pinned post tail; pinned stays on page 1 only', async () => {
+    const owner = await makeUser({ role: 'worker' });
+    const groupId = await makeGroup(owner.id);
+    const pinned = await communityService.createPost({ groupId, authorId: owner.id, body: 'PINNED' });
+    if (!pinned.ok) throw new Error();
+    await prisma.post.update({ where: { id: pinned.value.postId }, data: { pinned: true } });
+    for (let i = 0; i < 4; i++) {
+      const p = await communityService.createPost({ groupId, authorId: owner.id, body: `tail ${i}` });
+      if (!p.ok) throw new Error();
+    }
+
+    // Page 1 (limit 2): pinned prepended + first 2 of the non-pinned tail.
+    const page1 = await communityService.listPosts({ groupId, limit: 2 });
+    if (!page1.ok) throw new Error();
+    expect(page1.value.items[0]!.id).toBe(pinned.value.postId); // pinned first
+    expect(page1.value.items.filter((p) => !p.pinned)).toHaveLength(2);
+    expect(page1.value.nextCursor).not.toBeNull();
+
+    // Walk the rest — pinned must NOT reappear; every tail post seen once.
+    const tailSeen: string[] = page1.value.items.filter((p) => !p.pinned).map((p) => p.id);
+    let cursor = page1.value.nextCursor;
+    while (cursor) {
+      const pg = await communityService.listPosts({ groupId, cursor, limit: 2 });
+      if (!pg.ok) throw new Error();
+      expect(pg.value.items.every((p) => !p.pinned)).toBe(true); // no pinned on later pages
+      tailSeen.push(...pg.value.items.map((p) => p.id));
+      cursor = pg.value.nextCursor;
+    }
+    expect(new Set(tailSeen).size).toBe(4); // all 4 tail posts, no dupes
   });
 
   it('redacts a phone number from a post body and raises a fraud signal (§5)', async () => {
