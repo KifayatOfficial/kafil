@@ -36,6 +36,10 @@ export default async function NearbyPage() {
         <div className="section-head">
           <h2>📍 Nearby — around Mingora Bazaar</h2>
           <span className="count-pill">{results.length}</span>
+          <span style={{ flex: 1 }} />
+          <a href="/map" className="btn btn-ghost">
+            🗺️ Map view
+          </a>
         </div>
         <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>
           Jobs, shops, and groups within range, closest first. (On mobile this uses your live location.)

@@ -1,5 +1,7 @@
 import { TopNav } from '../../components/TopNav';
 import { fetchList } from '../../lib/serverApi';
+import { QuickForm } from '../../components/QuickForm';
+import { createGroupAction } from '../actions';
 
 interface Group {
   id: string;
@@ -45,6 +47,17 @@ export default async function CommunityPage() {
         <div className="section-head">
           <h2>Community groups</h2>
           <span className="count-pill">{groups.length}</span>
+          <span style={{ flex: 1 }} />
+          <QuickForm action={createGroupAction} openLabel="＋ New group" submitLabel="Create group">
+            <input name="name" className="input" placeholder="Group name (e.g. Welders of Mingora)" maxLength={200} />
+            <select name="category" className="input">
+              <option value="geographic">📍 Geographic</option>
+              <option value="trade">🔧 Trade</option>
+              <option value="interest">🌾 Interest</option>
+              <option value="general">💬 General</option>
+            </select>
+            <textarea name="description" className="input" placeholder="What's this group about? (optional)" rows={2} maxLength={4000} />
+          </QuickForm>
         </div>
 
         {groups.length === 0 ? (

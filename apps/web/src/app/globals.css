@@ -243,6 +243,9 @@ h2 { font-size: 20px; font-weight: 700; }
 .map-pin-glyph { font-size: 22px; }
 .map-pin-label { font-size: 11px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 1px 8px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
 .map-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); }
+.map-loading { height: 70vh; display: grid; place-items: center; color: var(--text-muted); background: var(--surface-sunken); border-radius: 12px; }
+/* Leaflet controls should sit above nothing weird; keep the container rounded. */
+.leaflet-container { font: inherit; }
 
 /* ─── Conversations list + chat thread ─────────────────────────────── */
 .list { display: flex; flex-direction: column; gap: 10px; }
@@ -258,3 +261,23 @@ h2 { font-size: 20px; font-weight: 700; }
 /* ─── Profile ──────────────────────────────────────────────────────── */
 .profile-head { display: flex; align-items: center; gap: 16px; }
 .profile-avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--primary), var(--accent)); }
+
+/* ─── Quick forms (web write actions) ──────────────────────────────── */
+.btn-ghost { background: var(--surface-sunken); color: var(--text); }
+.btn-ghost:hover { filter: none; background: var(--border); }
+.quickform-wrap { display: inline-block; position: relative; }
+.quickform { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; min-width: 320px; position: absolute; z-index: 5; box-shadow: var(--shadow-2); }
+.quickform-foot { display: flex; align-items: center; gap: 12px; }
+.input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.input:focus { outline: none; border-color: var(--primary); }
+.form-ok { color: var(--primary); font-size: 13px; font-weight: 600; }
+.form-err { color: var(--danger); font-size: 13px; font-weight: 600; }

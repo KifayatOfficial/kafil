@@ -1,4 +1,6 @@
 import { TopNav } from '../components/TopNav';
+import { QuickForm } from '../components/QuickForm';
+import { postJobAction } from './actions';
 
 interface Job {
   id: string;
@@ -52,6 +54,12 @@ export default async function Page() {
         <div className="section-head">
           <h2>Open jobs</h2>
           <span className="count-pill">{jobs.length}</span>
+          <span style={{ flex: 1 }} />
+          <QuickForm action={postJobAction} openLabel="＋ Post a job" submitLabel="Post job">
+            <input name="title" className="input" placeholder="Job title (e.g. Mason for boundary wall)" maxLength={200} />
+            <input name="rate" className="input" type="number" placeholder="Daily rate (PKR)" min={1} />
+            <textarea name="description" className="input" placeholder="Describe the work (optional)" rows={2} maxLength={4000} />
+          </QuickForm>
         </div>
 
         {jobs.length === 0 ? (
