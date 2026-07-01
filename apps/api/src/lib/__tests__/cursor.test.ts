@@ -1,7 +1,17 @@
 // Unit tests for the keyset-cursor helper (§P1.4). Pure — no DB.
 
 import { describe, expect, it } from 'vitest';
-import { clampLimit, cursorWhere, decodeCursor, encodeCursor, paginate } from '../cursor';
+import {
+  clampLimit,
+  cursorWhere,
+  decodeCursor,
+  decodeRatingCursor,
+  encodeCursor,
+  encodeRatingCursor,
+  paginate,
+  paginateByRating,
+  ratingCursorWhere,
+} from '../cursor';
 
 describe('cursor encode/decode', () => {
   it('round-trips (createdAt, id)', () => {
@@ -38,6 +48,32 @@ describe('cursorWhere', () => {
     const c = { createdAt: new Date('2026-06-30T00:00:00.000Z'), id: 'x' };
     const w = cursorWhere(c) as { OR: unknown[] };
     expect(w.OR).toHaveLength(2);
+  });
+});
+
+describe('rating cursor', () => {
+  it('round-trips (rating, id) and rejects garbage', () => {
+    const t = encodeRatingCursor({ rating: 4.512, id: 'shop-1' });
+    expect(decodeRatingCursor(t)).toEqual({ rating: 4.512, id: 'shop-1' });
+    expect(decodeRatingCursor(null)).toBeNull();
+    expect(decodeRatingCursor('$$$')).toBeNull();
+  });
+
+  it('ratingCursorWhere is empty for page 1 and a (rating,id) < tuple otherwise', () => {
+    expect(ratingCursorWhere(null)).toEqual({});
+    const w = ratingCursorWhere({ rating: 3.2, id: 'x' }) as { OR: unknown[] };
+    expect(w.OR).toHaveLength(2);
+  });
+
+  it('paginateByRating emits a rating cursor from the last in-page row', () => {
+    const rows = [
+      { id: 'a', ratingBayesian: 4.9 },
+      { id: 'b', ratingBayesian: 4.1 },
+      { id: 'c', ratingBayesian: 3.0 }, // extra (limit+1)
+    ];
+    const { items, nextCursor } = paginateByRating(rows, 2);
+    expect(items).toHaveLength(2);
+    expect(decodeRatingCursor(nextCursor)).toEqual({ rating: 4.1, id: 'b' });
   });
 });
 

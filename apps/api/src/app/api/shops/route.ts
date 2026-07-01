@@ -11,10 +11,17 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const actor = await getActorOrDevStub(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
-  const category = new URL(req.url).searchParams.get('category') ?? undefined;
-  const res = await shopService.listShops({ category });
+  const url = new URL(req.url);
+  const category = url.searchParams.get('category') ?? undefined;
+  const cursor = url.searchParams.get('cursor');
+  const limitParam = url.searchParams.get('limit');
+  const res = await shopService.listShops({
+    category,
+    cursor,
+    limit: limitParam ? Number.parseInt(limitParam, 10) : undefined,
+  });
   if (!res.ok) return NextResponse.json(res, { status: statusFor(res.code) });
-  return NextResponse.json({ ok: true, shops: res.value });
+  return NextResponse.json({ ok: true, shops: res.value.items, nextCursor: res.value.nextCursor });
 }
 
 export async function POST(req: Request) {

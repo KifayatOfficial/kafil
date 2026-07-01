@@ -32,13 +32,13 @@ describe('shops — CRUD + directory', () => {
     await makeShop(owner.id, 'Hardware Hub', ['hardware']);
 
     const all = await shopService.listShops({});
-    expect(all.ok && all.value.length).toBe(2);
+    expect(all.ok && all.value.items.length).toBe(2);
 
     const cement = await shopService.listShops({ category: 'cement' });
     expect(cement.ok).toBe(true);
     if (cement.ok) {
-      expect(cement.value.length).toBe(1);
-      expect(cement.value[0]!.name).toBe('Cement Store');
+      expect(cement.value.items.length).toBe(1);
+      expect(cement.value.items[0]!.name).toBe('Cement Store');
     }
   });
 

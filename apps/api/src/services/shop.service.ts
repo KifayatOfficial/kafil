@@ -11,6 +11,7 @@ import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { shopRepository } from '../repositories/shop.repository';
+import { clampLimit, decodeRatingCursor, paginateByRating, ratingCursorWhere } from '../lib/cursor';
 import { redact } from './pii-redactor';
 
 // Bayesian prior — mirror reputation.service so shop + worker ratings read alike.
@@ -99,12 +100,23 @@ export const shopService = {
     return ok({ updated: true });
   },
 
-  async listShops(args: { category?: string }): Promise<
-    Result<Array<{ id: string; name: string; description: string | null; categories: string[]; photos: string[]; verifiedTier: string; rating: number; location: { label: string; district: string | null } | null }>>
+  async listShops(args: { category?: string; cursor?: string | null; limit?: number }): Promise<
+    Result<{
+      items: Array<{ id: string; name: string; description: string | null; categories: string[]; photos: string[]; verifiedTier: string; rating: number; location: { label: string; district: string | null } | null }>;
+      nextCursor: string | null;
+    }>
   > {
-    const rows = await shopRepository.list({ category: args.category });
-    return ok(
-      rows.map((s) => ({
+    // §P1.4b — keyset by rating (see lib/cursor rating-cursor note on eventual consistency).
+    const limit = clampLimit(args.limit);
+    const cursor = decodeRatingCursor(args.cursor);
+    const rows = await shopRepository.list({
+      category: args.category,
+      take: limit + 1,
+      cursorWhere: ratingCursorWhere(cursor),
+    });
+    const { items, nextCursor } = paginateByRating(rows, limit);
+    return ok({
+      items: items.map((s) => ({
         id: s.id,
         name: s.name,
         description: s.description,
@@ -114,7 +126,8 @@ export const shopService = {
         rating: s.ratingBayesian ? Number(s.ratingBayesian) : 0,
         location: s.location ? { label: s.location.label, district: s.location.district } : null,
       })),
-    );
+      nextCursor,
+    });
   },
 
   async getShop(shopId: string): Promise<Result<{

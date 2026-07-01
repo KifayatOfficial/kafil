@@ -83,3 +83,54 @@ export function paginate<T extends { createdAt: Date; id: string }>(
   }
   return { items: rows, nextCursor: null };
 }
+
+// ── Rating-keyed cursor (for the shop directory, ordered by rating DESC, id DESC) ──────
+//
+// A rating is a mutable NUMERIC(4,3). A keyset on a value that can change is imperfect —
+// mid-scroll a shop whose rating shifted could appear twice or be skipped once. That's
+// acceptable for a directory (the REST read is authoritative; same "hint, self-heals"
+// stance as SSE), and the id tiebreak keeps a single page-walk deterministic.
+
+export interface DecodedRatingCursor {
+  rating: number;
+  id: string;
+}
+
+export function encodeRatingCursor(row: { rating: number; id: string }): string {
+  return Buffer.from(JSON.stringify({ r: row.rating, i: row.id }), 'utf8').toString('base64url');
+}
+
+export function decodeRatingCursor(cursor: string | null | undefined): DecodedRatingCursor | null {
+  if (!cursor) return null;
+  try {
+    const obj = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as { r?: number; i?: string };
+    if (typeof obj.r !== 'number' || !obj.i) return null;
+    return { rating: obj.r, id: obj.i };
+  } catch {
+    return null;
+  }
+}
+
+/** Prisma WHERE for "rows after the cursor" under (rating DESC, id DESC). {} for page 1. */
+export function ratingCursorWhere(cursor: DecodedRatingCursor | null): object {
+  if (!cursor) return {};
+  return {
+    OR: [
+      { ratingBayesian: { lt: cursor.rating } },
+      { AND: [{ ratingBayesian: cursor.rating }, { id: { lt: cursor.id } }] },
+    ],
+  };
+}
+
+/** paginate() variant that emits a rating cursor from the last in-page row. */
+export function paginateByRating<T extends { ratingBayesian: unknown; id: string }>(
+  rows: T[],
+  limit: number,
+): { items: T[]; nextCursor: string | null } {
+  if (rows.length > limit) {
+    const items = rows.slice(0, limit);
+    const last = items[items.length - 1]!;
+    return { items, nextCursor: encodeRatingCursor({ rating: Number(last.ratingBayesian ?? 0), id: last.id }) };
+  }
+  return { items: rows, nextCursor: null };
+}

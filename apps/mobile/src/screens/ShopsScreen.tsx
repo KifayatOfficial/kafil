@@ -46,11 +46,38 @@ export function ShopsScreen({ onBack }: Props) {
   const [cat, setCat] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await api.get<{ ok: true; shops: ShopRow[] }>('/api/shops');
-    if (r.success) setShops((r.data as { shops: ShopRow[] }).shops);
+    const r = await api.get<{ ok: true; shops: ShopRow[]; nextCursor?: string | null }>('/api/shops');
+    if (r.success) {
+      const data = r.data as { shops: ShopRow[]; nextCursor?: string | null };
+      setShops(data.shops);
+      setNextCursor(data.nextCursor ?? null);
+    }
   }, [api]);
+
+  // §P1.4b — append the next rating-keyed page as the directory scrolls; dedupe by id.
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.get<{ ok: true; shops: ShopRow[]; nextCursor?: string | null }>(
+        `/api/shops?cursor=${encodeURIComponent(nextCursor)}`,
+      );
+      if (r.success) {
+        const data = r.data as { shops: ShopRow[]; nextCursor?: string | null };
+        setShops((cur) => {
+          const have = new Set((cur ?? []).map((s) => s.id));
+          return [...(cur ?? []), ...data.shops.filter((s) => !have.has(s.id))];
+        });
+        setNextCursor(data.nextCursor ?? null);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [api, nextCursor, loadingMore]);
 
   useEffect(() => {
     void load();
@@ -119,6 +146,11 @@ export function ShopsScreen({ onBack }: Props) {
             renderItem={({ item }) => <ShopCard shop={item} onPress={() => setOpenId(item.id)} />}
             estimatedItemSize={96}
             contentContainerStyle={{ padding: 16 }}
+            onEndReached={() => void loadMore()}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingMore ? <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} /> : null
+            }
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           />
         ) : (

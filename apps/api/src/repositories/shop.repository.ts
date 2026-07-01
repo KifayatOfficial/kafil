@@ -22,16 +22,21 @@ export const shopRepository = {
     });
   },
 
-  /** Active shops, optional category filter, highest-rated then newest. */
-  list(args: { category?: string; limit?: number }) {
+  /**
+   * Active shops, optional category filter, highest-rated first. §P1.4b — keyset by
+   * (ratingBayesian DESC, id DESC): id is the strict tiebreak so the cursor is monotonic
+   * within a page-walk even when many shops share a rating. Caller passes take=limit+1.
+   */
+  list(args: { category?: string; take: number; cursorWhere?: object }) {
     return prisma.shop.findMany({
       where: {
         status: 'active',
         // categories is a JSON array; `array_contains` matches a member.
         ...(args.category ? { categories: { array_contains: args.category } } : {}),
+        ...(args.cursorWhere ?? {}),
       },
-      orderBy: [{ ratingBayesian: 'desc' }, { createdAt: 'desc' }],
-      take: args.limit ?? 50,
+      orderBy: [{ ratingBayesian: 'desc' }, { id: 'desc' }],
+      take: args.take,
       include: { location: { select: { label: true, district: true } } },
     });
   },
