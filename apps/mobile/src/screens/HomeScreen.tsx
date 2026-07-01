@@ -6,6 +6,8 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
+import { listItemIn } from '../motion/entrances';
+import { useReduceMotion } from '../motion/reduceMotion';
 import { haptic } from '../motion/feedback';
 import { KafilLottie } from '../motion/KafilLottie';
 import { makeStyles, useTheme, ThemeToggle } from '../theme';
@@ -237,7 +239,7 @@ export function HomeScreen() {
         <FlashList
           data={jobs}
           keyExtractor={(j) => j.id}
-          renderItem={({ item }) => <JobCard job={item} onPress={() => setOpenJobId(item.id)} />}
+          renderItem={({ item, index }) => <JobCard job={item} index={index} onPress={() => setOpenJobId(item.id)} />}
           estimatedItemSize={120}
           contentContainerStyle={{ paddingBottom: 24 }}
           // §P1.4 — infinite scroll: pull the next keyset page as the user nears the end.
@@ -286,10 +288,11 @@ export function HomeScreen() {
   );
 }
 
-function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
+function JobCard({ job, index, onPress }: { job: Job; index: number; onPress: () => void }) {
   const styles = useStyles();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const { lang } = useAuth();
+  const reduce = useReduceMotion();
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   // §6.1 — featured flag from either feed shape.
   const featured =
@@ -304,7 +307,12 @@ function JobCard({ job, onPress }: { job: Job; onPress: () => void }) {
       }}
       onPressOut={onPressOut}
     >
-      <Animated.View style={[styles.card, featured && styles.cardFeatured, animatedStyle]}>
+      {/* §27 — staggered fade+rise entrance (reduce-motion aware). Makes the feed feel
+          alive on open without being gratuitous; delay caps so long lists don't lag. */}
+      <Animated.View
+        entering={listItemIn(reduce, index)}
+        style={[styles.card, featured && styles.cardFeatured, animatedStyle]}
+      >
         {featured ? <Text style={styles.featuredBadge}>{i18n.t(lang, 'featured.badge')}</Text> : null}
         <Text style={styles.title}>{job.title}</Text>
         <Text style={styles.muted}>

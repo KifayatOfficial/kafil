@@ -18,6 +18,35 @@ export const motionEasing = {
   easeStandard: 'cubic-bezier(0.4, 0, 0.2, 1)',
 } as const;
 
+// §27 (aligned to Amazon Cloudscape motion — 2026-06-30 research) — the three named
+// easing curves + three timing-role durations Cloudscape uses across every component.
+// Adopting the proven contract so KAFIL motion reads as one coherent system.
+// See docs/KAFIL_DESIGN_RESEARCH_amazon_portals.md §2.
+//   A "responsive" — responsive yet smooth; default for entrances (menus, cards).
+//   B "sticky"     — element sticks to a state (settle, hover-out).
+//   C "expressive" — draws attention expressively (toasts, links, celebratory reveals).
+export const motionCurve = {
+  A: [0.0, 0.0, 0.0, 1.0],
+  B: [1.0, 0.0, 0.83, 1.0],
+  C: [0.84, 0.0, 0.16, 1.0],
+} as const;
+export type MotionCurveName = keyof typeof motionCurve;
+
+// Timing roles (Cloudscape triad) — reach for these by INTENT; the xs/sm/md scale above
+// stays for raw values. `disabled: 0` is the reduced-motion value (token-level switch, §3).
+export const motionTiming = {
+  responsive: 115,
+  expressive: 165,
+  complex: 250,
+} as const;
+export type MotionTimingRole = keyof typeof motionTiming;
+
+/** cubic-bezier() CSS string for a named curve — for the web consumer. */
+export function cssCurve(name: MotionCurveName): string {
+  const [a, b, c, d] = motionCurve[name];
+  return `cubic-bezier(${a}, ${b}, ${c}, ${d})`;
+}
+
 // §27.3 — six classes. Engineers and designers reference these in PRs.
 export const MotionClass = {
   A_MICRO: 'micro-interaction',
