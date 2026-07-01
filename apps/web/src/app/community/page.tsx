@@ -1,6 +1,7 @@
 import { TopNav } from '../../components/TopNav';
-import { fetchList } from '../../lib/serverApi';
+import { fetchList, DEMO_WORKER } from '../../lib/serverApi';
 import { QuickForm } from '../../components/QuickForm';
+import { JoinButton } from '../../components/JoinButton';
 import { createGroupAction } from '../actions';
 
 interface Group {
@@ -10,6 +11,7 @@ interface Group {
   category: string | null;
   memberCount: number;
   postCount: number;
+  joined?: boolean;
   location: { label: string; district: string | null } | null;
 }
 
@@ -21,7 +23,9 @@ const CAT_GLYPH: Record<string, string> = {
 };
 
 export default async function CommunityPage() {
-  const groups = await fetchList<Group>('/api/groups', 'groups');
+  // View as the demo worker so `joined` flags reflect a real member (join/post use the
+  // same actor). The employer isn't in any seeded group.
+  const groups = await fetchList<Group>('/api/groups', 'groups', DEMO_WORKER);
   const members = groups.reduce((s, g) => s + (g.memberCount ?? 0), 0);
   const posts = groups.reduce((s, g) => s + (g.postCount ?? 0), 0);
 
@@ -73,10 +77,12 @@ export default async function CommunityPage() {
             {groups.map((g) => (
               <article className="card" key={g.id}>
                 <div className="card-headline">
-                  <h3 className="job-title">
-                    {g.category ? `${CAT_GLYPH[g.category] ?? '💬'} ` : ''}
-                    {g.name}
-                  </h3>
+                  <a href={`/community/${g.id}`} className="card-link">
+                    <h3 className="job-title">
+                      {g.category ? `${CAT_GLYPH[g.category] ?? '💬'} ` : ''}
+                      {g.name}
+                    </h3>
+                  </a>
                   {g.category ? <span className="badge">{g.category}</span> : null}
                 </div>
                 {g.description ? <p className="job-desc">{g.description}</p> : null}
@@ -84,6 +90,16 @@ export default async function CommunityPage() {
                   <span className="chip chip-rate">👥 {g.memberCount} members</span>
                   <span className="chip">📝 {g.postCount} posts</span>
                   {g.location?.district ? <span className="chip">📍 {g.location.district}</span> : null}
+                </div>
+                <div className="card-actions">
+                  <a href={`/community/${g.id}`} className="btn btn-ghost">
+                    Open feed →
+                  </a>
+                  {g.joined ? (
+                    <span className="chip chip-rate">✓ Joined</span>
+                  ) : (
+                    <JoinButton groupId={g.id} />
+                  )}
                 </div>
               </article>
             ))}
