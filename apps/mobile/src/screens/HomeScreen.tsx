@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { usePressScale } from '../motion/animations';
@@ -50,6 +51,11 @@ export function HomeScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [roles, setRoles] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  // Real balance for the header chip — same /api/wallet endpoint WalletScreen already
+  // uses. Intentionally NOT a fabricated "this week" trend; we only show what the ledger
+  // actually knows. Silent-fails to null (chip just doesn't render) rather than blocking
+  // the feed on a second network round-trip.
+  const [walletBalanceMinor, setWalletBalanceMinor] = useState<string | null>(null);
   // §P1.4 — infinite scroll. nextCursor is set only on the plain (non-ranked) feed; the
   // ranked feed returns its whole scored slice in one shot (no cursor → no paging).
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -110,6 +116,10 @@ export function HomeScreen() {
       const list = ((me.data as { user?: { roles?: Array<{ role: string }> } }).user?.roles ?? [])
         .map((r) => r.role);
       setRoles(list);
+      if (list.includes('worker')) {
+        const w = await api.get<{ ok: true; wallet: { balanceMinor: string } }>('/api/wallet').catch(() => null);
+        if (w?.success) setWalletBalanceMinor((w.data as { wallet: { balanceMinor: string } }).wallet.balanceMinor);
+      }
     })().catch(() => undefined);
   }, [api]);
 
@@ -191,11 +201,20 @@ export function HomeScreen() {
           {/* §13/§25.4 — global sync status; renders nothing when there's no queued work. */}
           <SyncIndicator />
         </View>
+        {/* Real wallet balance (not a fabricated trend) — the thing a worker checks first
+            on open. Tapping opens the existing WalletScreen; nothing new is invented here,
+            just surfaced a hop earlier than "You → Wallet". */}
+        {walletBalanceMinor !== null ? (
+          <Pressable onPress={() => setModal('wallet')} style={styles.walletChip} accessibilityLabel={i18n.t(lang, 'wallet.title')}>
+            <Ionicons name="wallet-outline" size={14} color={colors.primary} />
+            <Text style={styles.walletChipText}>{Math.floor(Number(walletBalanceMinor) / 100).toLocaleString('en-US')}</Text>
+          </Pressable>
+        ) : null}
         {/* §27 Portal: community/shops/nearby/wallet/etc. now live in the bottom tab bar
             + the "You" hub, so the Home header keeps only chat (the one cross-cutting
             action that isn't its own tab) + theme. */}
         <Pressable onPress={() => setModal('chats')} hitSlop={10} accessibilityLabel={i18n.t(lang, 'nav.chats')} style={{ marginStart: 8 }}>
-          <Text style={{ fontSize: 22 }}>💬</Text>
+          <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
         </Pressable>
         <ThemeToggle />
       </View>
@@ -264,6 +283,7 @@ export function HomeScreen() {
 
 function JobCard({ job, index, onPress }: { job: Job; index: number; onPress: () => void }) {
   const styles = useStyles();
+  const { colors } = useTheme();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const { lang } = useAuth();
   const reduce = useReduceMotion();
@@ -287,11 +307,20 @@ function JobCard({ job, index, onPress }: { job: Job; index: number; onPress: ()
         entering={listItemIn(reduce, index)}
         style={[styles.card, featured && styles.cardFeatured, animatedStyle]}
       >
-        {featured ? <Text style={styles.featuredBadge}>{i18n.t(lang, 'featured.badge')}</Text> : null}
-        <Text style={styles.title}>{job.title}</Text>
-        <Text style={styles.muted}>
-          {job.ratePkr} PKR / {job.rateUnit} · {job.status}
-        </Text>
+        <View style={[styles.cardIconTile, featured && styles.cardIconTileFeatured]}>
+          <Ionicons name="briefcase-outline" size={20} color={featured ? colors.textOnPrimary : colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          {featured ? <Text style={styles.featuredBadge}>{i18n.t(lang, 'featured.badge')}</Text> : null}
+          <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
+          <View style={styles.cardMetaRow}>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusPillText}>{job.status}</Text>
+            </View>
+            <Text style={styles.muted}>{job.rateUnit}</Text>
+          </View>
+        </View>
+        <Text style={styles.price}>{job.ratePkr.toLocaleString('en-US')} PKR</Text>
       </Animated.View>
     </Pressable>
   );
@@ -306,6 +335,17 @@ const useStyles = makeStyles((t) => ({
   mascot: { width: 60, height: 60 },
   h1: { ...t.type.h1, color: t.colors.text },
   muted: { ...t.type.caption, color: t.colors.textMuted },
+  walletChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: t.colors.primarySoft,
+    borderRadius: t.radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginStart: 8,
+  },
+  walletChipText: { ...t.type.label, color: t.colors.primary },
   cooldownBanner: {
     backgroundColor: t.colors.warningSoft,
     padding: 14,
@@ -332,15 +372,36 @@ const useStyles = makeStyles((t) => ({
   cooldownTitle: { ...t.type.title, color: t.colors.warning, marginBottom: t.spacing.xs },
   cooldownBody: { ...t.type.body, color: t.colors.text },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.md,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.lg,
-    padding: t.spacing.lg,
+    padding: t.spacing.md,
     marginVertical: t.spacing.sm,
     borderWidth: 1,
     borderColor: t.colors.border,
     ...t.elevation(1),
   },
   cardFeatured: { borderColor: t.colors.primary, backgroundColor: t.colors.primarySoft },
+  cardIconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: t.radius.md,
+    backgroundColor: t.colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardIconTileFeatured: { backgroundColor: t.colors.primary },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginTop: t.spacing.xs },
+  statusPill: {
+    backgroundColor: t.colors.surfaceSunken,
+    borderRadius: t.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  statusPillText: { ...t.type.micro, color: t.colors.textMuted, textTransform: 'capitalize' },
+  price: { ...t.type.label, color: t.colors.primary, fontWeight: '700' },
   featuredBadge: { ...t.type.caption, color: t.colors.primary, fontWeight: '700', marginBottom: t.spacing.xs },
-  title: { ...t.type.title, color: t.colors.text, marginBottom: t.spacing.xs },
+  title: { ...t.type.title, color: t.colors.text },
 }));

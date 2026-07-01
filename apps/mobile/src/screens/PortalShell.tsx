@@ -10,13 +10,14 @@
 
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { i18n, motion } from '@kafil/core';
 import { useAuth } from '../auth/AuthContext';
 import { haptic } from '../motion/feedback';
-import { fadeIn } from '../motion/entrances';
 import { useReduceMotion } from '../motion/reduceMotion';
 import { makeStyles, useTheme } from '../theme';
+import { GlassSurface } from '../components/GlassSurface';
 import { HomeScreen } from './HomeScreen';
 import { CommunityScreen } from './CommunityScreen';
 import { ShopsScreen } from './ShopsScreen';
@@ -25,12 +26,17 @@ import { ProfileHubScreen } from './ProfileHubScreen';
 
 type Tab = 'home' | 'community' | 'shops' | 'nearby' | 'you';
 
-const TABS: Array<{ key: Tab; icon: string; labelKey: Parameters<typeof i18n.t>[1] }> = [
-  { key: 'home', icon: '🏠', labelKey: 'nav.home' },
-  { key: 'community', icon: '👥', labelKey: 'community.title' },
-  { key: 'shops', icon: '🏪', labelKey: 'shops.title' },
-  { key: 'nearby', icon: '📍', labelKey: 'nearby.title' },
-  { key: 'you', icon: '🙂', labelKey: 'nav.you' },
+const TABS: Array<{
+  key: Tab;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconActive: keyof typeof Ionicons.glyphMap;
+  labelKey: Parameters<typeof i18n.t>[1];
+}> = [
+  { key: 'home', icon: 'home-outline', iconActive: 'home', labelKey: 'nav.home' },
+  { key: 'community', icon: 'people-outline', iconActive: 'people', labelKey: 'community.title' },
+  { key: 'shops', icon: 'storefront-outline', iconActive: 'storefront', labelKey: 'shops.title' },
+  { key: 'nearby', icon: 'location-outline', iconActive: 'location', labelKey: 'nearby.title' },
+  { key: 'you', icon: 'person-outline', iconActive: 'person', labelKey: 'nav.you' },
 ];
 
 export function PortalShell() {
@@ -52,7 +58,8 @@ export function PortalShell() {
 
   return (
     <View style={styles.root}>
-      {/* Each visited tab is kept mounted; only the active one is visible. */}
+      {/* Each visited tab is kept mounted; only the active one is visible. Bottom padding
+          on the body clears the floating bar so the last list row is never hidden under it. */}
       <View style={styles.body}>
         {visited.has('home') ? <Pane active={tab === 'home'}><HomeScreen /></Pane> : null}
         {visited.has('community') ? <Pane active={tab === 'community'}><CommunityScreen onBack={() => go('home')} /></Pane> : null}
@@ -61,33 +68,71 @@ export function PortalShell() {
         {visited.has('you') ? <Pane active={tab === 'you'}><ProfileHubScreen /></Pane> : null}
       </View>
 
-      {/* Bottom tab bar. */}
-      <View style={styles.tabBar}>
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          return (
-            <Pressable
-              key={t.key}
-              onPress={() => go(t.key)}
-              style={styles.tab}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={i18n.t(lang, t.labelKey)}
-            >
-              {active ? (
-                <Animated.View entering={fadeIn(reduce)} style={styles.activePip} />
-              ) : (
-                <View style={styles.pipSpacer} />
-              )}
-              <Text style={[styles.tabIcon, active && styles.tabIconActive]}>{t.icon}</Text>
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]} numberOfLines={1}>
-                {i18n.t(lang, t.labelKey)}
-              </Text>
-            </Pressable>
-          );
-        })}
+      {/* Floating glass tab bar — inset from the edges (a "bubble", not pinned to the
+          bezel), per current platform glass guidance. Content scrolls fully behind it;
+          each screen accounts for the ~92px clearance via styles.body's bottom inset. */}
+      <View style={styles.tabBarWrap} pointerEvents="box-none">
+        <GlassSurface style={styles.tabBar} intensity={55}>
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            return (
+              <TabButton
+                key={t.key}
+                active={active}
+                icon={active ? t.iconActive : t.icon}
+                label={i18n.t(lang, t.labelKey)}
+                activeColor={colors.primary}
+                inactiveColor={colors.textFaint}
+                onPress={() => go(t.key)}
+              />
+            );
+          })}
+        </GlassSurface>
       </View>
     </View>
+  );
+}
+
+function TabButton({
+  active,
+  icon,
+  label,
+  activeColor,
+  inactiveColor,
+  onPress,
+}: {
+  active: boolean;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  activeColor: string;
+  inactiveColor: string;
+  onPress: () => void;
+}) {
+  const styles = useStyles();
+  const reduce = useReduceMotion();
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity: withSpring(active ? 1 : 0, reduce ? { duration: 0 } : motion.motionEasing.springResponsive),
+    transform: [{ scale: withSpring(active ? 1 : 0.7, reduce ? { duration: 0 } : motion.motionEasing.springResponsive) }],
+  }));
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.tab}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+    >
+      <View style={styles.tabHitArea}>
+        <Animated.View style={[styles.activePill, pillStyle]} />
+        <Ionicons name={icon} size={20} color={active ? activeColor : inactiveColor} style={styles.tabIconOverlay} />
+      </View>
+      {active ? (
+        <Text style={[styles.tabLabel, { color: activeColor }]} numberOfLines={1}>
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -104,21 +149,30 @@ const paneStyle = {
 
 const useStyles = makeStyles((t) => ({
   root: { flex: 1, backgroundColor: t.colors.bg },
-  body: { flex: 1 },
+  body: { flex: 1, paddingBottom: 92 },
+  tabBarWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+  },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: t.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: t.colors.border,
-    paddingBottom: 8,
-    paddingTop: 6,
-    ...t.elevation(2),
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    ...t.elevation(3),
   },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
-  activePip: { width: 20, height: 3, borderRadius: 2, backgroundColor: t.colors.primary, marginBottom: 3 },
-  pipSpacer: { height: 3, marginBottom: 3 },
-  tabIcon: { fontSize: 20, opacity: 0.5 },
-  tabIconActive: { opacity: 1 },
-  tabLabel: { ...t.type.micro, color: t.colors.textMuted },
-  tabLabelActive: { color: t.colors.primary },
+  tab: { alignItems: 'center', justifyContent: 'center', paddingVertical: 4, minWidth: 44 },
+  tabHitArea: { alignItems: 'center', justifyContent: 'center', width: 40, height: 32 },
+  activePill: {
+    position: 'absolute',
+    width: 40,
+    height: 32,
+    borderRadius: t.radius.lg,
+    backgroundColor: t.colors.primarySoft,
+  },
+  tabIconOverlay: {},
+  tabLabel: { ...t.type.micro, marginTop: 2 },
 }));

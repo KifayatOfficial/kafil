@@ -221,6 +221,15 @@ export interface ThemePalette {
   domainJobs: string;
   domainShops: string;
   domainCommunity: string;
+  // §27.10 — glass/floating-chrome roles (2026-07 nav redesign). Reserved for the
+  // navigation layer only (floating tab bar, top bar) per platform glass guidance —
+  // never for content/list surfaces, which stay on the opaque `surface*` roles above.
+  // Consumers pass these as a semi-transparent tint into a native blur view (mobile:
+  // expo-blur BlurView; web: backdrop-filter). `glassHighlight` is a 1px top inset used
+  // to fake a specular edge without a real light-bending renderer.
+  glassTint: string; // rgba fill sampled behind the blur
+  glassBorder: string; // rgba hairline around the floating bar
+  glassHighlight: string; // rgba inset top-edge sheen
 }
 
 export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
@@ -282,6 +291,10 @@ export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
     domainJobs: '#1F7A4D',
     domainShops: '#C2873A',
     domainCommunity: '#7E2EB2',
+    // Warm-white glass — samples as cream, not gray, over the light canvas.
+    glassTint: 'rgba(250, 249, 246, 0.72)',
+    glassBorder: 'rgba(255, 255, 255, 0.6)',
+    glassHighlight: 'rgba(255, 255, 255, 0.9)',
   },
   dark: {
     bg: '#1B1814',
@@ -341,6 +354,11 @@ export const themeColors: { light: ThemePalette; dark: ThemePalette } = {
     domainJobs: '#22A668',
     domainShops: '#D49A4F',
     domainCommunity: '#A86BD8',
+    // Dark glass samples as charcoal (never pure black — keeps it reading as glass,
+    // not a slab) with a faint cool-white highlight for the same specular-edge cue.
+    glassTint: 'rgba(27, 24, 20, 0.68)',
+    glassBorder: 'rgba(255, 255, 255, 0.08)',
+    glassHighlight: 'rgba(255, 255, 255, 0.12)',
   },
 };
 
