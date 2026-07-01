@@ -317,4 +317,23 @@ Honesty so scope stays real:
 
 ---
 
+## 8. Progress log (delivered)
+
+Shipped against this roadmap (all on `main`, typecheck-clean, api 206 tests):
+
+- **P1.3 + P1.3b — Virtualization (fixes B1):** every feed (jobs, shops, community, group posts, nearby) uses `@shopify/flash-list`. No more ScrollView OOM risk on low-end Androids.
+- **P1.4 + P1.4b — Cursor pagination (fixes B2):** keyset pagination + infinite scroll on jobs, groups, group-posts (pinned-aware), and shops (rating-keyed). Reusable `lib/cursor.ts`. **Discovery deliberately excluded** — it's a radius-capped (≤15km / ≤180-row) distance-merged snapshot, not an unbounded feed; keyset there would be over-engineering (revisit only if the radius grows).
+- **P1.5 — Core schemas:** shop/group/post/comment Zod contracts in `@kafil/core` (fixes B6 drift).
+- **P2.1 — Moment engine:** declarative Class-D celebrations (hired/paid/5★/milestone) + confetti + haptics, reduce-motion aware.
+- **P2.2 (partial) — `<PressableScale>`:** the touch-feedback primitive (shared-element/spring transitions still pending expo-router).
+- **P2.3 — `<StatefulView>`:** unified loading/empty/error/offline states, mascot-led, retry-aware.
+- **P2.4 — Mascot guide + coach-marks:** pose system + once-only first-run coaching (persisted).
+- **P4.1 — Real-time (fixes B3):** in-process SSE bus + `/api/stream` + publish hooks (chat, hire); mobile `useEventStream`; chat poll demoted to a 15s fallback. *(In-process; Redis fan-out for multi-pod is the scale follow-up in §5.)*
+- **XC — Error boundary:** no screen crash white-screens the app; themed mascot fallback.
+- **Theme:** expanded token system (neutral ramp, soft/strong role variants, info role, gradients, domain hues, richer type/elevation) + light/dark across all mobile screens + web dashboard.
+
+**Still gated (not yet startable here):** P1.1 expo-router / P1.2 tabs / P2.2 transitions (need on-device verification), P4.2 push (needs FCM/APNs creds), P3.1–P3.3 social features (large builds), XS scale-infra (Redis/CDN/PostGIS tuning — deploy-time).
+
+---
+
 *Append changes as the build progresses. This doc is the experience-and-scale companion to the v1.1 engineering addendum — read them together.*
