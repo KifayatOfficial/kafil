@@ -2,13 +2,14 @@ import { TopNav } from '../../../components/TopNav';
 import { fetchJson } from '../../../lib/serverApi';
 import { QuickForm } from '../../../components/QuickForm';
 import { submitReviewAction } from '../../actions';
+import { timeAgo } from '../../../lib/format';
 
 interface Review {
   id: string;
   rating: number;
   comment: string | null;
   createdAt: string;
-  author?: { displayName: string } | null;
+  author?: { id?: string; displayName: string } | null;
 }
 interface Shop {
   id: string;
@@ -107,10 +108,18 @@ export default async function ShopDetailPage({ params }: { params: Promise<{ id:
                 {shop.reviews.map((r) => (
                   <article className="card" key={r.id}>
                     <div className="card-headline">
-                      <strong>{r.author?.displayName ?? 'Customer'}</strong>
+                      {r.author?.id ? (
+                        <a href={`/u/${r.author.id}`} className="author-link">
+                          <span className="mini-avatar" aria-hidden>{(r.author.displayName ?? 'C').charAt(0)}</span>
+                          <strong>{r.author.displayName}</strong>
+                        </a>
+                      ) : (
+                        <strong>{r.author?.displayName ?? 'Customer'}</strong>
+                      )}
                       <span className="chip chip-rate">{'★'.repeat(r.rating)}</span>
                     </div>
                     {r.comment ? <p className="job-desc" style={{ marginTop: 6 }}>{r.comment}</p> : null}
+                    <span className="chip">🕐 {timeAgo(r.createdAt)}</span>
                   </article>
                 ))}
               </div>

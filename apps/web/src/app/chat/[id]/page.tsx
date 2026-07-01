@@ -2,6 +2,7 @@ import { TopNav } from '../../../components/TopNav';
 import { fetchList, DEMO_EMPLOYER } from '../../../lib/serverApi';
 import { isSignedIn } from '../../../lib/session';
 import { ChatComposer } from '../../../components/ChatComposer';
+import { timeAgo } from '../../../lib/format';
 
 interface Msg {
   id: string;
@@ -42,7 +43,10 @@ export default async function ChatThreadPage({ params }: { params: Promise<{ id:
               const mine = m.senderId === DEMO_EMPLOYER;
               return (
                 <div key={m.id} className={`bubble-row ${mine ? 'bubble-row-me' : ''}`}>
-                  <div className={`bubble ${mine ? 'bubble-me' : 'bubble-them'}`}>{m.body}</div>
+                  <div className={`bubble ${mine ? 'bubble-me' : 'bubble-them'}`}>
+                    {m.body}
+                    <span className="bubble-time">{timeAgo(m.createdAt)}</span>
+                  </div>
                 </div>
               );
             })}
