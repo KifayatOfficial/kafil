@@ -99,7 +99,54 @@ async function main() {
     }
   }
 
-  console.log(`additive community seed: ${shopsCreated} shops, ${groupsCreated} groups, ${postsCreated} posts created.`);
+  // ── Worker profile (so /profile has content) ────────────────────────────
+  await prisma.workerProfile.upsert({
+    where: { userId: WORKER_ID },
+    create: {
+      userId: WORKER_ID,
+      bio: 'Mason with 10 years experience — brickwork, plaster, boundary walls.',
+      experienceYears: 10,
+      baseLocationId: location.id,
+      ratingBayesian: 4.7,
+    },
+    update: {},
+  });
+
+  // ── One conversation + a couple messages (so /messages + /chat have content) ──
+  // Chats are normally auto-created on hire; we seed one directly between the demo
+  // employer and worker so the desktop shell's messaging view isn't empty in dev.
+  let conversationsCreated = 0;
+  const existingConv = await prisma.conversation.findFirst({
+    where: { participants: { some: { userId: EMPLOYER_ID } } },
+  });
+  if (!existingConv) {
+    const conv = await prisma.conversation.create({ data: {} });
+    await prisma.conversationParticipant.createMany({
+      data: [
+        { conversationId: conv.id, userId: EMPLOYER_ID },
+        { conversationId: conv.id, userId: WORKER_ID },
+      ],
+      skipDuplicates: true,
+    });
+    // Redacted body is what readers see; raw body is moderator-only. For seed content
+    // there's nothing to redact, so both are the same plain text.
+    const msgs = [
+      { senderId: EMPLOYER_ID, body: 'Assalam o alaikum — are you free for a 3-day boundary wall in Saidu?' },
+      { senderId: WORKER_ID, body: 'Walaikum assalam. Yes, I can start tomorrow. What is the daily rate?' },
+      { senderId: EMPLOYER_ID, body: '3,500 PKR/day, materials provided. Confirm and I will accept you on the app.' },
+    ];
+    for (const m of msgs) {
+      await prisma.message.create({
+        data: { conversationId: conv.id, senderId: m.senderId, body: m.body, bodyRedacted: m.body, flagged: false },
+      });
+    }
+    conversationsCreated = 1;
+  }
+
+  console.log(
+    `additive community seed: ${shopsCreated} shops, ${groupsCreated} groups, ${postsCreated} posts, ` +
+      `${conversationsCreated} conversation, 1 worker profile.`,
+  );
 }
 
 main()

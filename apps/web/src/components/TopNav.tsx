@@ -7,9 +7,14 @@ const LINKS = [
   { href: '/', label: 'Work', glyph: '🧰' },
   { href: '/shops', label: 'Shops', glyph: '🏪' },
   { href: '/community', label: 'Community', glyph: '🏘️' },
+  { href: '/nearby', label: 'Nearby', glyph: '📍' },
+  { href: '/messages', label: 'Messages', glyph: '💬' },
+  { href: '/profile', label: 'Profile', glyph: '👤' },
 ] as const;
 
-export function TopNav({ active }: { active: '/' | '/shops' | '/community' }) {
+type NavHref = (typeof LINKS)[number]['href'];
+
+export function TopNav({ active }: { active: NavHref }) {
   return (
     <header className="topbar">
       <div className="brand">

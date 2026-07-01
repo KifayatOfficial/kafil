@@ -1,7 +1,7 @@
 // GET  /api/conversations/:id/messages — list visible messages (redacted-only).
 // POST /api/conversations/:id/messages — send a message (PII redacted server-side).
 import { NextResponse } from 'next/server';
-import { getActor } from '../../../../../lib/auth';
+import { getActor, getActorOrDevStub } from '../../../../../lib/auth';
 import { chatService } from '../../../../../services/chat.service';
 import { idempotent } from '../../../../../lib/idempotency';
 import { statusFor } from '../../../../../lib/result';
@@ -9,7 +9,9 @@ import { statusFor } from '../../../../../lib/result';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const actor = await getActor(req);
+  // Read accepts the dev-stub so the desktop shell can view a thread in dev; sending
+  // (POST below) stays strict. chatService still gates on participation either way.
+  const actor = await getActorOrDevStub(req);
   if (!actor) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   const { id } = await ctx.params;
   const res = await chatService.listMessages({ conversationId: id, userId: actor.userId });

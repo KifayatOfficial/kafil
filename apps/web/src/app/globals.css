@@ -218,3 +218,43 @@ h2 { font-size: 20px; font-weight: 700; }
 .empty { text-align: center; padding: 64px 24px; }
 .empty-glyph { font-size: 48px; }
 .empty-title { font-size: 16px; font-weight: 700; margin: 12px 0 4px; }
+
+/* ─── Nearby list ──────────────────────────────────────────────────── */
+.nearby-card { display: flex; align-items: center; gap: 12px; margin: 0; }
+.nearby-glyph { font-size: 28px; }
+
+/* ─── Map (coordinate plot, not a tile map) ────────────────────────── */
+.mappad {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background:
+    radial-gradient(circle at 50% 50%, var(--primary-soft), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 39px, var(--border) 39px 40px),
+    repeating-linear-gradient(90deg, transparent 0 39px, var(--border) 39px 40px),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.map-origin { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 26px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.map-pin { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; max-width: 120px; }
+.map-pin-glyph { font-size: 22px; }
+.map-pin-label { font-size: 11px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 1px 8px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.map-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); }
+
+/* ─── Conversations list + chat thread ─────────────────────────────── */
+.list { display: flex; flex-direction: column; gap: 10px; }
+.conv-row { display: flex; align-items: center; gap: 12px; margin: 0; text-decoration: none; color: inherit; }
+.conv-avatar { font-size: 24px; width: 44px; height: 44px; display: grid; place-items: center; background: var(--surface-sunken); border-radius: 50%; }
+.thread { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.bubble-row { display: flex; }
+.bubble-row-me { justify-content: flex-end; }
+.bubble { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; }
+.bubble-them { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.bubble-me { background: var(--primary); color: var(--text-on-primary); border-bottom-right-radius: 4px; }
+
+/* ─── Profile ──────────────────────────────────────────────────────── */
+.profile-head { display: flex; align-items: center; gap: 16px; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--primary), var(--accent)); }

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/db';
-import { getActor } from '../../../../lib/auth';
+import { getActorOrDevStub } from '../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const actor = await getActor(req);
+  // Read accepts the dev-stub (x-user-id) so the desktop shell can show a profile in dev;
+  // the stub is a no-op in production.
+  const actor = await getActorOrDevStub(req);
   if (!actor) {
     return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
   }
