@@ -30,6 +30,57 @@ const UpdateWorkerProfileInput = z.object({
 });
 
 export const userService = {
+  /**
+   * GET /api/users/:id — PUBLIC profile. P6: phone/PII is platform-asset, so it is NOT
+   * returned here — only the display name, photo, roles, trust/rating, and (if a worker)
+   * bio + experience. This is what one user may see about another.
+   */
+  async getPublicProfile(userId: string): Promise<
+    Result<{
+      id: string;
+      displayName: string;
+      photoUrl: string | null;
+      status: string;
+      trustScore: number;
+      kycLevel: number;
+      roles: string[];
+      workerProfile: { bio: string | null; experienceYears: number | null; rating: number } | null;
+    }>
+  > {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        displayName: true,
+        photoUrl: true,
+        status: true,
+        trustScore: true,
+        kycLevel: true,
+        roles: { select: { role: true } },
+        workerProfile: { select: { bio: true, experienceYears: true, ratingBayesian: true } },
+      },
+    });
+    if (!u) return err('NOT_FOUND', 'user not found');
+    // Banned/deactivated users aren't shown publicly (T&S — no platform for bad actors).
+    if (u.status === 'banned' || u.status === 'deactivated') return err('NOT_FOUND', 'user not found');
+    return ok({
+      id: u.id,
+      displayName: u.displayName,
+      photoUrl: u.photoUrl,
+      status: u.status,
+      trustScore: u.trustScore,
+      kycLevel: u.kycLevel,
+      roles: u.roles.map((r) => r.role),
+      workerProfile: u.workerProfile
+        ? {
+            bio: u.workerProfile.bio,
+            experienceYears: u.workerProfile.experienceYears,
+            rating: u.workerProfile.ratingBayesian ? Number(u.workerProfile.ratingBayesian) : 0,
+          }
+        : null,
+    });
+  },
+
   /** PATCH /api/auth/me */
   async updateProfile(args: { userId: string; input: unknown }): Promise<Result<{ updated: true }>> {
     const parse = UpdateProfileInput.safeParse(args.input);

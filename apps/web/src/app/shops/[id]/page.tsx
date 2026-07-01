@@ -1,5 +1,7 @@
 import { TopNav } from '../../../components/TopNav';
 import { fetchJson } from '../../../lib/serverApi';
+import { QuickForm } from '../../../components/QuickForm';
+import { submitReviewAction } from '../../actions';
 
 interface Review {
   id: string;
@@ -87,6 +89,18 @@ export default async function ShopDetailPage({ params }: { params: Promise<{ id:
             <div className="section-head">
               <h2>Reviews</h2>
               <span className="count-pill">{shop.reviews?.length ?? 0}</span>
+              <span style={{ flex: 1 }} />
+              <QuickForm action={submitReviewAction} openLabel="✍️ Write a review" submitLabel="Submit review">
+                <input type="hidden" name="shopId" value={id} />
+                <select name="rating" className="input" defaultValue="5">
+                  <option value="5">★★★★★ (5)</option>
+                  <option value="4">★★★★ (4)</option>
+                  <option value="3">★★★ (3)</option>
+                  <option value="2">★★ (2)</option>
+                  <option value="1">★ (1)</option>
+                </select>
+                <textarea name="comment" className="input" placeholder="How was this shop? (optional)" rows={2} maxLength={2000} />
+              </QuickForm>
             </div>
             {shop.reviews && shop.reviews.length ? (
               <div className="list">

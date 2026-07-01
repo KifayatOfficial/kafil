@@ -1,5 +1,7 @@
 import { TopNav } from '../../../components/TopNav';
 import { fetchJson } from '../../../lib/serverApi';
+import { QuickForm } from '../../../components/QuickForm';
+import { applyToJobAction } from '../../actions';
 
 interface Slot {
   id: string;
@@ -41,6 +43,14 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       <main className="container" style={{ maxWidth: 760 }}>
         <div className="section-head">
           <a href="/" className="chip">← Work</a>
+          <span style={{ flex: 1 }} />
+          {job ? (
+            <QuickForm action={applyToJobAction} openLabel="✋ Apply" submitLabel="Send application">
+              <input type="hidden" name="jobId" value={id} />
+              <textarea name="message" className="input" placeholder="Message to the employer (optional)" rows={2} maxLength={1000} />
+              <input name="rate" className="input" type="number" placeholder="Your proposed rate (PKR, optional)" min={1} />
+            </QuickForm>
+          ) : null}
         </div>
 
         {!job ? (

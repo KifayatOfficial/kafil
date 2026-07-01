@@ -106,3 +106,31 @@ export async function joinGroupAction(_prev: ActionResult | null, form: FormData
   if (r.ok) revalidatePath('/community');
   return r.ok ? { ok: true, message: 'Joined.' } : r;
 }
+
+// ── Jobs: apply (as the demo worker) ──────────────────────────────────────
+export async function applyToJobAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
+  const jobId = String(form.get('jobId') ?? '');
+  const message = String(form.get('message') ?? '').trim();
+  const rate = Number.parseInt(String(form.get('rate') ?? ''), 10);
+  if (!jobId) return { ok: false, message: 'Missing job.' };
+  const body: Record<string, unknown> = {};
+  if (message) body.message = message;
+  if (Number.isFinite(rate) && rate > 0) body.proposed_rate_pkr = rate;
+
+  const r = await post(`/api/jobs/${jobId}/applications`, body, DEV_WORKER);
+  if (r.ok) revalidatePath(`/job/${jobId}`);
+  return r.ok ? { ok: true, message: 'Application sent.' } : r;
+}
+
+// ── Shops: write a review (as the demo worker/customer) ───────────────────
+export async function submitReviewAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
+  const shopId = String(form.get('shopId') ?? '');
+  const rating = Number.parseInt(String(form.get('rating') ?? ''), 10);
+  const comment = String(form.get('comment') ?? '').trim();
+  if (!shopId) return { ok: false, message: 'Missing shop.' };
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) return { ok: false, message: 'Pick a rating 1–5.' };
+
+  const r = await post(`/api/shops/${shopId}/reviews`, { rating, comment: comment || undefined }, DEV_WORKER);
+  if (r.ok) revalidatePath(`/shops/${shopId}`);
+  return r.ok ? { ok: true, message: 'Review submitted.' } : r;
+}
