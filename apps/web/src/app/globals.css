@@ -19,6 +19,11 @@
   --radius-pill: 999px;
   --shadow-1: 0 1px 3px rgba(58, 46, 31, 0.08);
   --shadow-2: 0 6px 20px rgba(58, 46, 31, 0.12);
+  /* §27.10 glass roles — mirror @kafil/core motion glass tokens (the mobile web:
+     backdrop-filter counterpart). Warm cream over the light canvas. */
+  --glass-tint: rgba(250, 249, 246, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
   font-family: system-ui, -apple-system, sans-serif;
   color-scheme: light;
 }
@@ -39,6 +44,10 @@
     --danger: #e06352;
     --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
     --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.6);
+    /* Charcoal glass over the dark canvas (mirrors core dark glass tokens). */
+    --glass-tint: rgba(27, 24, 20, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-highlight: rgba(255, 255, 255, 0.12);
     color-scheme: dark;
   }
 }
@@ -97,9 +106,17 @@ h2 { font-size: 20px; font-weight: 700; }
   justify-content: space-between;
   gap: 16px;
   padding: 14px 24px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: saturate(140%) blur(10px);
-  border-bottom: 1px solid var(--border);
+  /* §27.10 glass chrome — matches the mobile GlassSurface: cream/charcoal tint behind a
+     real backdrop blur, hairline glass border, and a 1px top-edge highlight sheen. */
+  background: var(--glass-tint);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+/* No-backdrop-filter fallback: solid-ish surface so the bar never turns unreadable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar { background: color-mix(in srgb, var(--surface) 92%, transparent); }
 }
 /* ─── Platform nav (Jobs / Shops / Community) ──────────────────────── */
 .nav { display: flex; gap: 6px; align-items: center; }
