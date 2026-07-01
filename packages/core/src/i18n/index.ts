@@ -62,6 +62,7 @@ type StringKey =
   | 'common.message_placeholder'
   | 'common.tap_all'
   | 'nav.home'
+  | 'nav.you'
   | 'nav.activity'
   | 'nav.chats'
   | 'nav.messages'
@@ -245,6 +246,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'common.message_placeholder': 'پیغام ولیکئ',
     'common.tap_all': 'هرڅه چې مناسب وي وټاکئ',
     'nav.home': 'کور',
+    'nav.you': 'زه',
     'nav.activity': 'فعالیت',
     'nav.chats': 'خبرې',
     'nav.messages': 'پیغامونه',
@@ -427,6 +429,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'common.message_placeholder': 'پیغام لکھیں',
     'common.tap_all': 'جو لاگو ہوں سب منتخب کریں',
     'nav.home': 'ہوم',
+    'nav.you': 'آپ',
     'nav.activity': 'سرگرمی',
     'nav.chats': 'چیٹس',
     'nav.messages': 'پیغامات',
@@ -609,6 +612,7 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'common.message_placeholder': 'Type a message',
     'common.tap_all': 'Tap all that apply.',
     'nav.home': 'Home',
+    'nav.you': 'You',
     'nav.activity': 'Activity',
     'nav.chats': 'Chats',
     'nav.messages': 'Messages',

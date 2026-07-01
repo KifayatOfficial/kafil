@@ -20,7 +20,7 @@ import { PhoneEntryScreen } from './src/screens/PhoneEntryScreen';
 import { OtpScreen } from './src/screens/OtpScreen';
 import { RoleScreen } from './src/screens/RoleScreen';
 import { WorkerSpecialtiesScreen } from './src/screens/WorkerSpecialtiesScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { PortalShell } from './src/screens/PortalShell';
 
 type AuthStep = 'phone' | 'otp';
 type OnboardingStep = 'role' | 'worker_specialties' | 'done';
@@ -159,5 +159,5 @@ function Flow() {
   if (onboardingStep === null) {
     return <LoadingScreen label="Loading…" />;
   }
-  return <HomeScreen />;
+  return <PortalShell />;
 }

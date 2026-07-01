@@ -40,7 +40,7 @@ interface Job {
 type Modal = 'detail' | 'post' | 'activity' | 'chats' | 'wallet' | 'referrals' | 'community' | 'shops' | 'nearby';
 
 export function HomeScreen() {
-  const { api, signOut, inCooldown, lang } = useAuth();
+  const { api, inCooldown, lang } = useAuth();
   const styles = useStyles();
   const { colors } = useTheme();
   const [jobs, setJobs] = useState<Job[] | null>(null);
@@ -191,39 +191,13 @@ export function HomeScreen() {
           {/* §13/§25.4 — global sync status; renders nothing when there's no queued work. */}
           <SyncIndicator />
         </View>
+        {/* §27 Portal: community/shops/nearby/wallet/etc. now live in the bottom tab bar
+            + the "You" hub, so the Home header keeps only chat (the one cross-cutting
+            action that isn't its own tab) + theme. */}
+        <Pressable onPress={() => setModal('chats')} hitSlop={10} accessibilityLabel={i18n.t(lang, 'nav.chats')} style={{ marginStart: 8 }}>
+          <Text style={{ fontSize: 22 }}>💬</Text>
+        </Pressable>
         <ThemeToggle />
-        <Pressable onPress={() => void signOut()} hitSlop={10} accessibilityLabel={i18n.t(lang, 'common.sign_out')} style={{ marginStart: 12 }}>
-          <Text style={{ color: colors.primary }}>{i18n.t(lang, 'common.sign_out')}</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.actionRow}>
-        <Pressable onPress={() => setModal('activity')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'nav.activity')}>
-          <Text style={styles.actionBtnText}>{i18n.t(lang, 'nav.activity')}</Text>
-        </Pressable>
-        <Pressable onPress={() => setModal('chats')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'nav.chats')}>
-          <Text style={styles.actionBtnText}>{i18n.t(lang, 'nav.chats')}</Text>
-        </Pressable>
-        <Pressable onPress={() => setModal('community')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'community.title')}>
-          <Text style={styles.actionBtnText}>👥</Text>
-        </Pressable>
-        <Pressable onPress={() => setModal('shops')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'shops.title')}>
-          <Text style={styles.actionBtnText}>🏪</Text>
-        </Pressable>
-        <Pressable onPress={() => setModal('nearby')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'nearby.title')}>
-          <Text style={styles.actionBtnText}>📍</Text>
-        </Pressable>
-        <Pressable onPress={() => setModal('wallet')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'wallet.title')}>
-          <Text style={styles.actionBtnText}>💰</Text>
-        </Pressable>
-        <Pressable onPress={() => setModal('referrals')} style={styles.actionBtn} accessibilityLabel={i18n.t(lang, 'referral.title')}>
-          <Text style={styles.actionBtnText}>🎁</Text>
-        </Pressable>
-        {isEmployer ? (
-          <Pressable onPress={() => setModal('post')} style={[styles.actionBtn, styles.actionBtnPrimary]} accessibilityLabel={i18n.t(lang, 'nav.post_job')}>
-            <Text style={[styles.actionBtnText, styles.actionBtnTextOnPrimary]}>{i18n.t(lang, 'nav.post_job')}</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       {inCooldown ? (
