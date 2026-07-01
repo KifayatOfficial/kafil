@@ -331,6 +331,7 @@ Shipped against this roadmap (all on `main`, typecheck-clean, api 206 tests):
 - **P4.1 — Real-time (fixes B3):** in-process SSE bus + `/api/stream` + publish hooks (chat, hire); mobile `useEventStream`; chat poll demoted to a 15s fallback. *(In-process; Redis fan-out for multi-pod is the scale follow-up in §5.)*
 - **XC — Error boundary:** no screen crash white-screens the app; themed mascot fallback.
 - **Theme:** expanded token system (neutral ramp, soft/strong role variants, info role, gradients, domain hues, richer type/elevation) + light/dark across all mobile screens + web dashboard.
+- **§27/1.2 — Live unread-chat badges (the re-engagement hook):** added a per-participant read cursor (`ConversationParticipant.lastReadAt`) and unread counting (one grouped query, no N+1; the caller's own messages never count). New `GET /api/conversations/unread-count` + `POST /api/conversations/:id/read` (inherently idempotent); `listConversations` now carries per-conversation `unreadCount`. Mobile: `useUnreadCount` (fetch + refresh on the `message.new` SSE hint — no polling timer), a `<Badge>` on the Home chat icon, per-row unread pills in the chat list, and mark-read-on-open in `ChatScreen`. Closes the §1.2 "badges update live" gap. Backend fully tested (api 210); mobile typecheck-only per sandbox env.
 
 **Still gated (not yet startable here):** P1.1 expo-router / P1.2 tabs / P2.2 transitions (need on-device verification), P4.2 push (needs FCM/APNs creds), P3.1–P3.3 social features (large builds), XS scale-infra (Redis/CDN/PostGIS tuning — deploy-time).
 
