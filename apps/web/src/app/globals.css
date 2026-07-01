@@ -101,6 +101,27 @@ h2 { font-size: 20px; font-weight: 700; }
   backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--border);
 }
+/* ─── Platform nav (Jobs / Shops / Community) ──────────────────────── */
+.nav { display: flex; gap: 6px; align-items: center; }
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 150ms ease, color 150ms ease;
+}
+.nav-link:hover { background: var(--surface-sunken); color: var(--text); }
+.nav-link-active { background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+
+.card-headline { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.badge-accent { background: var(--accent-soft); color: var(--accent); }
+
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark {
   width: 40px;

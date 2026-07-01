@@ -1,4 +1,4 @@
-import { i18n } from '@kafil/core';
+import { TopNav } from '../components/TopNav';
 
 interface Job {
   id: string;
@@ -32,7 +32,6 @@ const pkr = (n: number) => new Intl.NumberFormat('en-PK').format(n);
 
 export default async function Page() {
   const jobs = await fetchJobs();
-  const t = (k: Parameters<typeof i18n.t>[1]) => i18n.t('ps', k);
 
   const featuredCount = jobs.filter(isFeatured).length;
   const totalHeadcount = jobs.reduce((s, j) => s + (j.headcount ?? 1), 0);
@@ -40,20 +39,7 @@ export default async function Page() {
 
   return (
     <div className="page">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden>
-            ك
-          </span>
-          <div>
-            <div className="brand-name">{t('app.name')}</div>
-            <div className="brand-tag">Desktop / admin · Mobile is primary (§23)</div>
-          </div>
-        </div>
-        <span className="theme-hint" title="Follows your system light/dark setting">
-          🌗 Auto theme
-        </span>
-      </header>
+      <TopNav active="/" />
 
       <main className="container">
         <section className="stats">
@@ -73,7 +59,7 @@ export default async function Page() {
             <div className="empty-glyph" aria-hidden>
               🗂️
             </div>
-            <p className="empty-title">{i18n.t('ps', 'empty.no_jobs')}</p>
+            <p className="empty-title">No open jobs yet</p>
             <p className="muted">Seed the database to populate the feed.</p>
           </div>
         ) : (
