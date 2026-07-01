@@ -164,3 +164,76 @@ describe('chat — anti-disintermediation channel (§5)', () => {
     expect(sig.weight).toBe(80);
   });
 });
+
+// Small helper: assert the unreadTotal call succeeded and return the count (keeps the
+// Result union narrowed for tsc, and the assertions below terse).
+async function unreadOf(userId: string): Promise<number> {
+  const r = await chatService.unreadTotal(userId);
+  if (!r.ok) throw new Error(`unreadTotal failed: ${r.code}`);
+  return r.value.total;
+}
+
+describe('chat — unread tracking + read cursor (§27/1.2)', () => {
+  it('a message from the other party counts as unread until the thread is read', async () => {
+    const { employer, worker, conversationId } = await buildAcceptedAssignment();
+
+    // Worker sends two messages; the employer has never opened the thread → both unread.
+    for (const body of ['hello', 'are you available?']) {
+      const r = await chatService.sendMessage({
+        conversationId,
+        senderId: worker.id,
+        input: { body, idempotency_key: newKey() },
+      });
+      expect(r.ok).toBe(true);
+    }
+
+    expect(await unreadOf(employer.id)).toBe(2);
+
+    // The per-conversation count rides along on listConversations.
+    const list = await chatService.listConversations(employer.id);
+    if (!list.ok) throw new Error('list failed');
+    const conv = list.value.find((c) => c.id === conversationId);
+    expect(conv?.unreadCount).toBe(2);
+  });
+
+  it("the caller's OWN messages never count as unread", async () => {
+    const { worker, conversationId } = await buildAcceptedAssignment();
+    await chatService.sendMessage({
+      conversationId,
+      senderId: worker.id,
+      input: { body: 'my own message', idempotency_key: newKey() },
+    });
+    expect(await unreadOf(worker.id)).toBe(0);
+  });
+
+  it('markRead zeroes the unread count; a later message makes it unread again', async () => {
+    const { employer, worker, conversationId } = await buildAcceptedAssignment();
+
+    await chatService.sendMessage({
+      conversationId,
+      senderId: worker.id,
+      input: { body: 'first', idempotency_key: newKey() },
+    });
+    expect(await unreadOf(employer.id)).toBe(1);
+
+    const marked = await chatService.markRead({ conversationId, userId: employer.id });
+    expect(marked.ok).toBe(true);
+    expect(await unreadOf(employer.id)).toBe(0);
+
+    // A message that arrives AFTER the read cursor is unread again.
+    await chatService.sendMessage({
+      conversationId,
+      senderId: worker.id,
+      input: { body: 'second', idempotency_key: newKey() },
+    });
+    expect(await unreadOf(employer.id)).toBe(1);
+  });
+
+  it('a non-participant cannot markRead (FORBIDDEN)', async () => {
+    const { conversationId } = await buildAcceptedAssignment();
+    const stranger = await makeUser({ role: 'worker' });
+    const res = await chatService.markRead({ conversationId, userId: stranger.id });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe('FORBIDDEN');
+  });
+});

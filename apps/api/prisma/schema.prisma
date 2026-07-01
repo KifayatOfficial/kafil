@@ -361,6 +361,9 @@ model Conversation {
 model ConversationParticipant {
   conversationId String @map("conversation_id") @db.Uuid
   userId         String @map("user_id") @db.Uuid
+  // §27/1.2 — last time this participant read the thread. NULL = never opened (all
+  // messages from the other party count as unread). Drives the live chat tab badge.
+  lastReadAt     DateTime? @map("last_read_at") @db.Timestamptz
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id])

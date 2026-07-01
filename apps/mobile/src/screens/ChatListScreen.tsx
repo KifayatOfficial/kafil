@@ -16,6 +16,8 @@ interface Conversation {
   createdAt: string;
   participants: Array<{ userId: string; user: { id: string; displayName: string } }>;
   messages: Array<{ id: string; bodyRedacted: string | null; body: string | null; createdAt: string }>;
+  /** Unread messages from the other party since this user's read cursor (§27/1.2). */
+  unreadCount?: number;
 }
 
 interface Props {
@@ -91,6 +93,7 @@ export function ChatListScreen({ onBack }: Props) {
                 key={c.id}
                 title={other?.user.displayName ?? '—'}
                 lastMessage={last?.bodyRedacted ?? last?.body ?? i18n.t(lang, 'chat.no_messages')}
+                unread={c.unreadCount ?? 0}
                 onPress={() => setOpenId(c.id)}
               />
             );
@@ -104,15 +107,18 @@ export function ChatListScreen({ onBack }: Props) {
 function ConvRow({
   title,
   lastMessage,
+  unread,
   onPress,
 }: {
   title: string;
   lastMessage: string | null;
+  unread: number;
   onPress: () => void;
 }) {
   const styles = useStyles();
   const { scale, onPressIn, onPressOut } = usePressScale();
   const a = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const hasUnread = unread > 0;
   return (
     <Pressable
       onPress={onPress}
@@ -123,8 +129,18 @@ function ConvRow({
       onPressOut={onPressOut}
     >
       <Animated.View style={[styles.row, a]}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        <Text style={styles.muted} numberOfLines={1}>
+        <View style={styles.rowHeader}>
+          {/* Bolder title on an unread thread — the same "unread = heavier" cue mail apps use. */}
+          <Text style={[styles.rowTitle, hasUnread && styles.rowTitleUnread]} numberOfLines={1}>
+            {title}
+          </Text>
+          {hasUnread ? (
+            <View style={styles.unreadPill}>
+              <Text style={styles.unreadPillText}>{unread > 9 ? '9+' : unread}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={[styles.muted, hasUnread && styles.lastUnread]} numberOfLines={1}>
           {lastMessage}
         </Text>
       </Animated.View>
@@ -152,5 +168,19 @@ const useStyles = makeStyles((t) => ({
     borderColor: t.colors.border,
     ...t.elevation(1),
   },
-  rowTitle: { ...t.type.title, color: t.colors.text },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowTitle: { ...t.type.title, color: t.colors.text, flex: 1 },
+  rowTitleUnread: { fontWeight: '800' },
+  lastUnread: { color: t.colors.text },
+  unreadPill: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: t.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginStart: t.spacing.sm,
+  },
+  unreadPillText: { color: t.colors.textOnPrimary, fontSize: 11, fontWeight: '700' },
 }));

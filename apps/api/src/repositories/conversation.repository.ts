@@ -71,4 +71,32 @@ export const conversationRepository = {
   ) {
     return tx.message.create({ data });
   },
+
+  /** Stamp the caller's read cursor to now. Returns the number of rows updated (0 if the
+   *  user isn't a participant — the service pre-checks, but this stays safe on its own). */
+  markRead(conversationId: string, userId: string) {
+    return prisma.conversationParticipant.updateMany({
+      where: { conversationId, userId },
+      data: { lastReadAt: new Date() },
+    });
+  },
+
+  /**
+   * Per-conversation unread counts for one user, across every conversation they're in.
+   * Unread = a message from SOMEONE ELSE created after the user's lastReadAt (or ever, if
+   * they've never opened the thread). One grouped query — no N+1. Conversations with zero
+   * unread are simply absent from the result (callers default them to 0).
+   */
+  async unreadCountsForUser(userId: string): Promise<Map<string, number>> {
+    const rows = await prisma.$queryRaw<Array<{ conversation_id: string; unread: bigint }>>`
+      SELECT m.conversation_id, count(*) AS unread
+      FROM messages m
+      JOIN conversation_participants cp
+        ON cp.conversation_id = m.conversation_id AND cp.user_id = ${userId}::uuid
+      WHERE m.sender_id <> ${userId}::uuid
+        AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
+      GROUP BY m.conversation_id
+    `;
+    return new Map(rows.map((r) => [r.conversation_id, Number(r.unread)]));
+  },
 };

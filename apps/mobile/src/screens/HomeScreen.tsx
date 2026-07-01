@@ -23,6 +23,8 @@ import { ShopsScreen } from './ShopsScreen';
 import { NearbyScreen } from './NearbyScreen';
 import { StatefulView } from '../components/StatefulView';
 import { SyncIndicator } from '../components/SyncIndicator';
+import { Badge } from '../components/Badge';
+import { useUnreadCount } from '../realtime/useUnreadCount';
 import { CoachMark, useCoachMark } from '../mascot';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mascotIdle = require('../../assets/lottie/mascot_idle.json');
@@ -44,6 +46,8 @@ export function HomeScreen() {
   const { api, inCooldown, lang } = useAuth();
   const styles = useStyles();
   const { colors } = useTheme();
+  // Live unread-chat count for the header badge (§27/1.2). Refreshes on SSE hint.
+  const { count: unread, refresh: refreshUnread } = useUnreadCount();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
@@ -157,7 +161,8 @@ export function HomeScreen() {
   }
 
   if (modal === 'chats') {
-    return <ChatListScreen onBack={() => setModal(null)} />;
+    // Refresh the header badge on return — threads opened in the list get marked read.
+    return <ChatListScreen onBack={() => { setModal(null); refreshUnread(); }} />;
   }
 
   if (modal === 'wallet') {
@@ -215,6 +220,7 @@ export function HomeScreen() {
             action that isn't its own tab) + theme. */}
         <Pressable onPress={() => setModal('chats')} hitSlop={10} accessibilityLabel={i18n.t(lang, 'nav.chats')} style={{ marginStart: 8 }}>
           <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+          <Badge count={unread} />
         </Pressable>
         <ThemeToggle />
       </View>

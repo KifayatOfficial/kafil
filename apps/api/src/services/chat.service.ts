@@ -30,8 +30,37 @@ async function assertParticipant(conversationId: string, userId: string) {
 export const chatService = {
   async listConversations(
     userId: string,
-  ): Promise<Result<Awaited<ReturnType<typeof conversationRepository.listForUser>>>> {
-    return ok(await conversationRepository.listForUser(userId));
+  ): Promise<
+    Result<Array<Awaited<ReturnType<typeof conversationRepository.listForUser>>[number] & { unreadCount: number }>>
+  > {
+    const [conversations, unread] = await Promise.all([
+      conversationRepository.listForUser(userId),
+      conversationRepository.unreadCountsForUser(userId),
+    ]);
+    // Attach the per-conversation unread count (0 when absent from the map) so the list
+    // can show an unread dot without a second round-trip.
+    const withUnread = conversations.map((c) => ({
+      ...c,
+      unreadCount: unread.get(c.id) ?? 0,
+    }));
+    return ok(withUnread);
+  },
+
+  /** Total unread messages across all the user's conversations — powers the chat tab badge. */
+  async unreadTotal(userId: string): Promise<Result<{ total: number }>> {
+    const counts = await conversationRepository.unreadCountsForUser(userId);
+    let total = 0;
+    for (const n of counts.values()) total += n;
+    return ok({ total });
+  },
+
+  /** Mark a conversation read up to now for the caller. Participation-gated (§5). */
+  async markRead(args: { conversationId: string; userId: string }): Promise<Result<{ ok: true }>> {
+    const conv = await assertParticipant(args.conversationId, args.userId);
+    if (conv === null) return err('NOT_FOUND', 'conversation not found');
+    if (conv === false) return err('FORBIDDEN', 'not a participant');
+    await conversationRepository.markRead(args.conversationId, args.userId);
+    return ok({ ok: true });
   },
 
   async listMessages(args: { conversationId: string; userId: string }) {

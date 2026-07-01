@@ -82,13 +82,24 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
     if (r.success) setMessages((r.data as { messages: Msg[] }).messages);
   }, [api, conversationId]);
 
+  // §27/1.2 — viewing a thread means it's read. Stamp the server-side read cursor so the
+  // unread badge clears; idempotent, so calling it on mount and on each new arrival while
+  // the screen is open is safe (last-write-wins). Fire-and-forget: a failure just means
+  // the badge lingers until the next successful mark, never a broken screen.
+  const markRead = useCallback(() => {
+    void api.post(`/api/conversations/${conversationId}/read`, {});
+  }, [api, conversationId]);
+
   // §P4.1 — real-time: the server pushes 'message.new' the instant the other party sends,
   // so we refetch immediately instead of waiting on a timer. The poll stays as a slow
   // fallback (SSE may not connect on every network), so chat still updates either way.
   useEventStream(
     {
       'message.new': (data) => {
-        if (!data.conversationId || data.conversationId === conversationId) void load();
+        if (!data.conversationId || data.conversationId === conversationId) {
+          void load();
+          markRead(); // reading it as it arrives keeps the badge at 0 while viewing
+        }
       },
     },
     true,
@@ -96,11 +107,12 @@ export function ChatScreen({ conversationId, otherUserId, onBack }: Props) {
 
   useEffect(() => {
     void load();
+    markRead(); // opening the thread clears its unread contribution
     const t = setInterval(() => {
       void load();
     }, POLL_MS);
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, markRead]);
 
   // Queued message ops for THIS conversation, oldest-first (send order).
   const myMsgOps = ops
