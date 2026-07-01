@@ -18,6 +18,8 @@ import { haptic } from '../motion/feedback';
 import { useReduceMotion } from '../motion/reduceMotion';
 import { makeStyles, useTheme } from '../theme';
 import { GlassSurface } from '../components/GlassSurface';
+import { Badge } from '../components/Badge';
+import { useNotificationCount } from '../realtime/useNotificationCount';
 import { HomeScreen } from './HomeScreen';
 import { CommunityScreen } from './CommunityScreen';
 import { ShopsScreen } from './ShopsScreen';
@@ -44,6 +46,7 @@ export function PortalShell() {
   const styles = useStyles();
   const { colors } = useTheme();
   const reduce = useReduceMotion();
+  const { count: notifUnread } = useNotificationCount();
   const [tab, setTab] = useState<Tab>('home');
   // Lazy-mount: only tabs that have been visited exist. Once mounted, a tab stays mounted
   // (hidden via display:none) so its scroll position + fetched data survive tab switches.
@@ -83,6 +86,7 @@ export function PortalShell() {
                 label={i18n.t(lang, t.labelKey)}
                 activeColor={colors.primary}
                 inactiveColor={colors.textFaint}
+                badge={t.key === 'you' ? notifUnread : 0}
                 onPress={() => go(t.key)}
               />
             );
@@ -99,6 +103,7 @@ function TabButton({
   label,
   activeColor,
   inactiveColor,
+  badge = 0,
   onPress,
 }: {
   active: boolean;
@@ -106,6 +111,7 @@ function TabButton({
   label: string;
   activeColor: string;
   inactiveColor: string;
+  badge?: number;
   onPress: () => void;
 }) {
   const styles = useStyles();
@@ -126,6 +132,7 @@ function TabButton({
       <View style={styles.tabHitArea}>
         <Animated.View style={[styles.activePill, pillStyle]} />
         <Ionicons name={icon} size={20} color={active ? activeColor : inactiveColor} style={styles.tabIconOverlay} />
+        <Badge count={badge} />
       </View>
       {active ? (
         <Text style={[styles.tabLabel, { color: activeColor }]} numberOfLines={1}>

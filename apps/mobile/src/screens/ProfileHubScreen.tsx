@@ -15,14 +15,18 @@ import { WalletScreen } from './WalletScreen';
 import { MyActivityScreen } from './MyActivityScreen';
 import { ReferralScreen } from './ReferralScreen';
 import { PostJobScreen } from './PostJobScreen';
+import { NotificationsScreen } from './NotificationsScreen';
+import { Badge } from '../components/Badge';
+import { useNotificationCount } from '../realtime/useNotificationCount';
 
-type Route = 'wallet' | 'activity' | 'referrals' | 'post';
+type Route = 'wallet' | 'activity' | 'referrals' | 'post' | 'notifications';
 
 interface Row {
   route: Route;
   icon: string;
   label: string;
   employerOnly?: boolean;
+  badge?: number;
 }
 
 export function ProfileHubScreen() {
@@ -32,6 +36,7 @@ export function ProfileHubScreen() {
   const reduce = useReduceMotion();
   const [roles, setRoles] = useState<string[]>([]);
   const [route, setRoute] = useState<Route | null>(null);
+  const { count: notifUnread, refresh: refreshNotif } = useNotificationCount();
 
   useEffect(() => {
     (async () => {
@@ -45,9 +50,12 @@ export function ProfileHubScreen() {
   if (route === 'activity') return <MyActivityScreen onBack={() => setRoute(null)} />;
   if (route === 'referrals') return <ReferralScreen onBack={() => setRoute(null)} />;
   if (route === 'post') return <PostJobScreen onClose={() => setRoute(null)} onPosted={() => setRoute(null)} />;
+  if (route === 'notifications')
+    return <NotificationsScreen onBack={() => { setRoute(null); refreshNotif(); }} onChanged={refreshNotif} />;
 
   const isEmployer = roles.includes('employer');
   const rows: Row[] = [
+    { route: 'notifications', icon: '🔔', label: i18n.t(lang, 'notifications.title'), badge: notifUnread },
     { route: 'activity', icon: '📋', label: i18n.t(lang, 'activity.title') },
     { route: 'wallet', icon: '💰', label: i18n.t(lang, 'wallet.title') },
     { route: 'referrals', icon: '🎁', label: i18n.t(lang, 'referral.title') },
@@ -73,7 +81,10 @@ export function ProfileHubScreen() {
               style={styles.row}
               accessibilityLabel={r.label}
             >
-              <Text style={styles.icon}>{r.icon}</Text>
+              <View>
+                <Text style={styles.icon}>{r.icon}</Text>
+                {r.badge ? <Badge count={r.badge} /> : null}
+              </View>
               <Text style={styles.label}>{r.label}</Text>
               <Text style={styles.chevron}>›</Text>
             </Pressable>

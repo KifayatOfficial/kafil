@@ -185,7 +185,10 @@ type StringKey =
   | 'wallet.topup_amount'
   | 'wallet.topup_cta'
   | 'wallet.topup_success'
-  | 'wallet.topup_pending';
+  | 'wallet.topup_pending'
+  | 'notifications.title'
+  | 'notifications.empty'
+  | 'notifications.mark_all_read';
 
 const dict: Record<Lang, Record<StringKey, string>> = {
   ps: {
@@ -370,6 +373,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'wallet.topup_cta': 'پیسې اضافه کړئ',
     'wallet.topup_success': 'بټوه ډکه شوه!',
     'wallet.topup_pending': 'تادیه پروسس کیږي…',
+    'notifications.title': 'خبرتیاوې',
+    'notifications.empty': 'تر اوسه هیڅ خبرتیا نشته.',
+    'notifications.mark_all_read': 'ټول لوستل شوي وګڼئ',
   },
   ur: {
     'app.name': 'کافل',
@@ -553,6 +559,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'wallet.topup_cta': 'پیسے شامل کریں',
     'wallet.topup_success': 'والیٹ ٹاپ اپ ہو گیا!',
     'wallet.topup_pending': 'ادائیگی پروسیس ہو رہی ہے…',
+    'notifications.title': 'اطلاعات',
+    'notifications.empty': 'ابھی تک کوئی اطلاع نہیں۔',
+    'notifications.mark_all_read': 'سب پڑھی ہوئی نشان زد کریں',
   },
   en: {
     'app.name': 'KAFIL',
@@ -736,6 +745,9 @@ const dict: Record<Lang, Record<StringKey, string>> = {
     'wallet.topup_cta': 'Add money',
     'wallet.topup_success': 'Wallet topped up!',
     'wallet.topup_pending': 'Processing payment…',
+    'notifications.title': 'Notifications',
+    'notifications.empty': 'No notifications yet.',
+    'notifications.mark_all_read': 'Mark all read',
   },
 };
 
