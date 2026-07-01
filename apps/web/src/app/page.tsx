@@ -107,7 +107,7 @@ function StatCard({
 function JobCard({ job }: { job: Job }) {
   const featured = isFeatured(job);
   return (
-    <article className={`card job-card${featured ? ' job-card-featured' : ''}`}>
+    <a className={`card job-card card-link${featured ? ' job-card-featured' : ''}`} href={`/job/${job.id}`}>
       {featured ? <span className="ribbon">★ Featured</span> : null}
       <h3 className="job-title">{job.title}</h3>
       {job.description ? <p className="job-desc">{job.description}</p> : null}
@@ -119,6 +119,6 @@ function JobCard({ job }: { job: Job }) {
         {job.durationDays ? <span className="chip">📅 {job.durationDays}d</span> : null}
         <span className="chip chip-status">{job.status}</span>
       </div>
-    </article>
+    </a>
   );
 }

@@ -61,7 +61,7 @@ export default async function ShopsPage() {
             {shops.map((s) => {
               const tier = TIER_BADGE[s.verifiedTier];
               return (
-                <article className="card shop-card" key={s.id}>
+                <a className="card shop-card card-link" key={s.id} href={`/shops/${s.id}`}>
                   <div className="card-headline">
                     <h3 className="job-title">{s.name}</h3>
                     {tier ? <span className={tier.cls}>{tier.label}</span> : null}
@@ -76,7 +76,7 @@ export default async function ShopsPage() {
                     ))}
                     {s.location?.district ? <span className="chip">📍 {s.location.district}</span> : null}
                   </div>
-                </article>
+                </a>
               );
             })}
           </div>

@@ -281,6 +281,19 @@ h2 { font-size: 20px; font-weight: 700; }
 .input:focus { outline: none; border-color: var(--primary); }
 .form-ok { color: var(--primary); font-size: 13px; font-weight: 600; }
 .form-err { color: var(--danger); font-size: 13px; font-weight: 600; }
-.card-link { text-decoration: none; color: inherit; }
+.card-link { text-decoration: none; color: inherit; display: block; }
 .card-link:hover .job-title { color: var(--primary); }
 .card-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+
+/* ─── Detail pages ─────────────────────────────────────────────────── */
+.detail-head { display: flex; align-items: flex-start; gap: 16px; }
+.detail-icon { font-size: 40px; line-height: 1; }
+.hours-grid { display: flex; flex-direction: column; gap: 4px; }
+.hours-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.hours-row:last-child { border-bottom: 0; }
+.hours-day { font-weight: 600; }
+.hours-val { color: var(--text-muted); }
+.slot-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.slot { font-size: 22px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--radius); border: 1px solid var(--border); }
+.slot-open { background: var(--surface-sunken); }
+.slot-filled { background: var(--primary-soft); }
