@@ -35,6 +35,26 @@ describe('community — groups & membership', () => {
     expect(m?.role).toBe('admin');
   });
 
+  it('keyset-paginates the group directory: every group once, no dupes', async () => {
+    const owner = await makeUser({ role: 'employer' });
+    for (let i = 0; i < 5; i++) await makeGroup(owner.id, `Group ${i}`);
+
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    let pages = 0;
+    do {
+      const res = await communityService.listGroups({ userId: owner.id, cursor, limit: 2 });
+      if (!res.ok) throw new Error('listGroups failed');
+      seen.push(...res.value.items.map((g) => g.id));
+      cursor = res.value.nextCursor;
+      if (++pages > 10) throw new Error('did not terminate');
+    } while (cursor);
+
+    expect(seen).toHaveLength(5);
+    expect(new Set(seen).size).toBe(5);
+    expect(pages).toBe(3); // 2 + 2 + 1
+  });
+
   it('lists groups with member counts and the caller join flag', async () => {
     const owner = await makeUser({ role: 'employer' });
     const other = await makeUser({ role: 'worker' });
@@ -44,17 +64,17 @@ describe('community — groups & membership', () => {
     const ownerView = await communityService.listGroups({ userId: owner.id });
     expect(ownerView.ok).toBe(true);
     if (ownerView.ok) {
-      const g = ownerView.value.find((x) => x.id === groupId)!;
+      const g = ownerView.value.items.find((x) => x.id === groupId)!;
       expect(g.joined).toBe(true);
       expect(g.memberCount).toBe(1);
     }
     const otherView = await communityService.listGroups({ userId: other.id });
-    if (otherView.ok) expect(otherView.value.find((x) => x.id === groupId)!.joined).toBe(false);
+    if (otherView.ok) expect(otherView.value.items.find((x) => x.id === groupId)!.joined).toBe(false);
 
     await communityService.join({ groupId, userId: other.id });
     const after = await communityService.listGroups({ userId: other.id });
     if (after.ok) {
-      const g = after.value.find((x) => x.id === groupId)!;
+      const g = after.value.items.find((x) => x.id === groupId)!;
       expect(g.joined).toBe(true);
       expect(g.memberCount).toBe(2);
     }

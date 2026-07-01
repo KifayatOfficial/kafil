@@ -16,6 +16,7 @@ import { prisma } from '../lib/db';
 import { emitEvent } from '../lib/events';
 import { err, ok, type Result } from '../lib/result';
 import { communityRepository } from '../repositories/community.repository';
+import { clampLimit, cursorWhere, decodeCursor, paginate } from '../lib/cursor';
 import { redact } from './pii-redactor';
 
 const GROUP_CATEGORIES = ['geographic', 'trade', 'general'] as const;
@@ -71,15 +72,22 @@ export const communityService = {
   },
 
   /** Group directory with membership flags for the caller. */
-  async listGroups(args: { userId: string; category?: string }): Promise<
-    Result<Array<{ id: string; name: string; description: string | null; category: string | null; memberCount: number; postCount: number; joined: boolean; location: { label: string; district: string | null } | null }>>
+  async listGroups(args: { userId: string; category?: string; cursor?: string | null; limit?: number }): Promise<
+    Result<{
+      items: Array<{ id: string; name: string; description: string | null; category: string | null; memberCount: number; postCount: number; joined: boolean; location: { label: string; district: string | null } | null }>;
+      nextCursor: string | null;
+    }>
   > {
-    const [groups, myIds] = await Promise.all([
-      communityRepository.listGroups({ category: args.category }),
+    // §P1.4b — keyset-paginated directory (grows unbounded; year-1 target is many groups).
+    const limit = clampLimit(args.limit);
+    const cursor = decodeCursor(args.cursor);
+    const [rows, myIds] = await Promise.all([
+      communityRepository.listGroups({ category: args.category, take: limit + 1, cursorWhere: cursorWhere(cursor) }),
       communityRepository.memberGroupIds(args.userId),
     ]);
-    return ok(
-      groups.map((g) => ({
+    const { items, nextCursor } = paginate(rows, limit);
+    return ok({
+      items: items.map((g) => ({
         id: g.id,
         name: g.name,
         description: g.description,
@@ -89,7 +97,8 @@ export const communityService = {
         joined: myIds.has(g.id),
         location: g.location ? { label: g.location.label, district: g.location.district } : null,
       })),
-    );
+      nextCursor,
+    });
   },
 
   async join(args: { groupId: string; userId: string }): Promise<Result<{ joined: true }>> {

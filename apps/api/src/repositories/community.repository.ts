@@ -19,12 +19,21 @@ export const communityRepository = {
     });
   },
 
-  /** Active groups, optionally filtered by category, newest first, with member counts. */
-  listGroups(args: { category?: string; limit?: number }) {
+  /**
+   * Active groups, optionally filtered by category, newest first, with member counts.
+   * §P1.4b — keyset-paginated: strict (createdAt DESC, id DESC) so the cursor tuple is
+   * monotonic and the page boundary is stable under inserts. Caller passes `take` already
+   * = limit + 1 so the service can detect whether a next page exists.
+   */
+  listGroups(args: { category?: string; take: number; cursorWhere?: object }) {
     return prisma.group.findMany({
-      where: { status: 'active', ...(args.category ? { category: args.category } : {}) },
-      orderBy: { createdAt: 'desc' },
-      take: args.limit ?? 50,
+      where: {
+        status: 'active',
+        ...(args.category ? { category: args.category } : {}),
+        ...(args.cursorWhere ?? {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: args.take,
       include: {
         location: { select: { label: true, district: true } },
         _count: { select: { members: true, posts: true } },

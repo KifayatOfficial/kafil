@@ -46,11 +46,38 @@ export function CommunityScreen({ onBack }: Props) {
   const [desc, setDesc] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await api.get<{ ok: true; groups: GroupRow[] }>('/api/groups');
-    if (r.success) setGroups((r.data as { groups: GroupRow[] }).groups);
+    const r = await api.get<{ ok: true; groups: GroupRow[]; nextCursor?: string | null }>('/api/groups');
+    if (r.success) {
+      const data = r.data as { groups: GroupRow[]; nextCursor?: string | null };
+      setGroups(data.groups);
+      setNextCursor(data.nextCursor ?? null);
+    }
   }, [api]);
+
+  // §P1.4b — append the next keyset page as the directory is scrolled; dedupe by id.
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await api.get<{ ok: true; groups: GroupRow[]; nextCursor?: string | null }>(
+        `/api/groups?cursor=${encodeURIComponent(nextCursor)}`,
+      );
+      if (r.success) {
+        const data = r.data as { groups: GroupRow[]; nextCursor?: string | null };
+        setGroups((cur) => {
+          const have = new Set((cur ?? []).map((g) => g.id));
+          return [...(cur ?? []), ...data.groups.filter((g) => !have.has(g.id))];
+        });
+        setNextCursor(data.nextCursor ?? null);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [api, nextCursor, loadingMore]);
 
   useEffect(() => {
     void load();
@@ -137,6 +164,11 @@ export function CommunityScreen({ onBack }: Props) {
             )}
             estimatedItemSize={92}
             contentContainerStyle={{ padding: 16 }}
+            onEndReached={() => void loadMore()}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingMore ? <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} /> : null
+            }
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           />
         ) : (
