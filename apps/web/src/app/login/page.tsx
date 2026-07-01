@@ -73,12 +73,14 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.message ?? data.code ?? 'Invalid code');
       const token = data.value?.accessToken as string | undefined;
+      const refreshToken = data.value?.refreshToken as string | undefined;
       if (!token) throw new Error('No token returned');
-      // Hand the token to the web server, which stores it in an httpOnly cookie.
+      // Hand both tokens to the web server, which stores them in httpOnly cookies (the
+      // refresh token powers silent re-auth when the access token expires).
       const s = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, refreshToken }),
       });
       if (!s.ok) throw new Error('Could not start session');
       router.push('/profile');

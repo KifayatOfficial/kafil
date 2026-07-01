@@ -2,6 +2,7 @@ import { TopNav } from '../../../components/TopNav';
 import { fetchList, DEMO_WORKER } from '../../../lib/serverApi';
 import { QuickForm } from '../../../components/QuickForm';
 import { createPostAction } from '../../actions';
+import { timeAgo } from '../../../lib/format';
 
 interface Post {
   id: string;
@@ -62,13 +63,17 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
             {posts.map((p) => (
               <article className="card" key={p.id}>
                 <div className="card-headline">
-                  <strong>{p.author.displayName}</strong>
+                  <a href={`/u/${p.author.id}`} className="author-link">
+                    <span className="mini-avatar" aria-hidden>{p.author.displayName.charAt(0)}</span>
+                    <strong>{p.author.displayName}</strong>
+                  </a>
                   <span className="badge">{KIND_BADGE[p.kind] ?? p.kind}</span>
                 </div>
                 {p.pinned ? <span className="chip chip-rate">📌 Pinned</span> : null}
                 {p.body ? <p className="job-desc" style={{ marginTop: 8 }}>{p.body}</p> : null}
                 <div className="job-meta">
                   <span className="chip">💬 {p.commentCount} comments</span>
+                  <span className="chip">🕐 {timeAgo(p.createdAt)}</span>
                 </div>
               </article>
             ))}

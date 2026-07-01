@@ -286,6 +286,9 @@ h2 { font-size: 20px; font-weight: 700; }
 .card-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .composer { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
 .composer .input { flex: 1; }
+.author-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; }
+.author-link:hover strong { color: var(--primary); }
+.mini-avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--primary), var(--accent)); }
 
 /* ─── Detail pages ─────────────────────────────────────────────────── */
 .detail-head { display: flex; align-items: flex-start; gap: 16px; }

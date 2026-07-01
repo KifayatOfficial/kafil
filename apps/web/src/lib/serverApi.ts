@@ -6,7 +6,7 @@
 // mobile app sees. (Real admin auth — a scoped token — lands with the workbench auth
 // pass; until then this keeps the shell useful in dev.)
 
-import { getSessionToken } from './session';
+import { getSessionToken, authedFetch } from './session';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 const DEV_USER = process.env.WEB_DEV_USER_ID ?? '00000000-0000-0000-0000-000000000010';
@@ -29,12 +29,11 @@ export async function fetchJson<T = Record<string, unknown>>(
   forceDevUser = false,
 ): Promise<T | null> {
   const token = forceDevUser ? null : await getSessionToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : { 'x-user-id': asUser };
   try {
-    const res = await fetch(`${API_URL}${path}`, {
-      headers,
-      ...({ cache: 'no-store' } as RequestInit),
-    });
+    // Signed in → authedFetch (auto-refreshes on 401). Signed out → dev-stub header.
+    const res = token
+      ? await authedFetch(path)
+      : await fetch(`${API_URL}${path}`, { headers: { 'x-user-id': asUser }, ...({ cache: 'no-store' } as RequestInit) });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {

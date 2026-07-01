@@ -10,7 +10,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'node:crypto';
-import { getSessionToken } from '../lib/session';
+import { getSessionToken, authedFetch } from '../lib/session';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 const DEV_EMPLOYER = process.env.WEB_DEV_USER_ID ?? '00000000-0000-0000-0000-000000000010';
@@ -35,17 +35,21 @@ async function post(
   }
   try {
     const key = randomUUID();
-    const auth: Record<string, string> = token
-      ? { Authorization: `Bearer ${token}` }
-      : { 'x-user-id': opts.devUser };
-    const res = await fetch(`${API_URL}${path}`, {
+    const commonInit: RequestInit = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'idempotency-key': key, ...auth },
+      headers: { 'Content-Type': 'application/json', 'idempotency-key': key },
       // Some endpoints validate idempotency_key IN THE BODY (e.g. CreateJobInput), others
       // only read the header. Send both so every write path is satisfied.
       body: JSON.stringify({ idempotency_key: key, ...body }),
-      cache: 'no-store',
-    });
+    };
+    // Signed in → authedFetch (auto-refreshes on 401); signed out → dev-stub header.
+    const res = token
+      ? await authedFetch(path, commonInit)
+      : await fetch(`${API_URL}${path}`, {
+          ...commonInit,
+          headers: { ...(commonInit.headers as Record<string, string>), 'x-user-id': opts.devUser },
+          cache: 'no-store',
+        });
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; code?: string };
     if (!res.ok || data.ok === false) {
       return { ok: false, message: data.message ?? data.code ?? `Failed (${res.status})` };
@@ -61,11 +65,10 @@ async function patch(path: string, body: Record<string, unknown>): Promise<Actio
   if (!token) return { ok: false, message: 'Please sign in to do this.' };
   try {
     const key = randomUUID();
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await authedFetch(path, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'idempotency-key': key, Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'idempotency-key': key },
       body: JSON.stringify({ idempotency_key: key, ...body }),
-      cache: 'no-store',
     });
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; code?: string };
     if (!res.ok || data.ok === false) return { ok: false, message: data.message ?? data.code ?? `Failed (${res.status})` };
