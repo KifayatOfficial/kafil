@@ -6,6 +6,8 @@
 // mobile app sees. (Real admin auth — a scoped token — lands with the workbench auth
 // pass; until then this keeps the shell useful in dev.)
 
+import { getSessionToken } from './session';
+
 const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 const DEV_USER = process.env.WEB_DEV_USER_ID ?? '00000000-0000-0000-0000-000000000010';
 
@@ -14,14 +16,23 @@ const DEV_USER = process.env.WEB_DEV_USER_ID ?? '00000000-0000-0000-0000-0000000
 export const DEMO_EMPLOYER = '00000000-0000-0000-0000-000000000010';
 export const DEMO_WORKER = '00000000-0000-0000-0000-000000000020';
 
-/** GET a path and return the parsed JSON object (or null on any failure). */
+/**
+ * GET a path and return the parsed JSON (or null on any failure). Auth precedence:
+ *  - real user signed in → Bearer token (reads as that user), UNLESS forceDevUser is set
+ *  - otherwise → x-user-id dev stub (the given asUser).
+ * `forceDevUser: true` pins to the dev actor even when signed in — used for directory
+ * views that should always show the demo dataset (e.g. shops owned by the demo employer).
+ */
 export async function fetchJson<T = Record<string, unknown>>(
   path: string,
   asUser: string = DEV_USER,
+  forceDevUser = false,
 ): Promise<T | null> {
+  const token = forceDevUser ? null : await getSessionToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : { 'x-user-id': asUser };
   try {
     const res = await fetch(`${API_URL}${path}`, {
-      headers: { 'x-user-id': asUser },
+      headers,
       ...({ cache: 'no-store' } as RequestInit),
     });
     if (!res.ok) return null;

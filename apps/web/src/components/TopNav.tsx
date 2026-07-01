@@ -1,7 +1,10 @@
 // Platform top nav — the three pillars (Jobs · Shops · Community) that the mobile app
-// reaches via its screens. On the desktop/admin shell they're pages, so this is a simple
-// server-rendered nav highlighting the active section. Icon + label so it reads at a
+// reaches via its screens. Server-rendered; highlights the active section and shows
+// Sign in / Sign out based on the real session cookie. Icon + label so it reads at a
 // glance (mirrors the low-literacy iconography of the app).
+
+import { isSignedIn } from '../lib/session';
+import { SignOutButton } from './SignOutButton';
 
 const LINKS = [
   { href: '/', label: 'Work', glyph: '🧰' },
@@ -14,7 +17,8 @@ const LINKS = [
 
 type NavHref = (typeof LINKS)[number]['href'];
 
-export function TopNav({ active }: { active: NavHref }) {
+export async function TopNav({ active }: { active: NavHref }) {
+  const signedIn = await isSignedIn();
   return (
     <header className="topbar">
       <div className="brand">
@@ -32,6 +36,7 @@ export function TopNav({ active }: { active: NavHref }) {
             <span aria-hidden>{l.glyph}</span> {l.label}
           </a>
         ))}
+        {signedIn ? <SignOutButton /> : <a href="/login" className="nav-link nav-link-active">Sign in</a>}
       </nav>
     </header>
   );

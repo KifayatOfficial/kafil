@@ -1,5 +1,7 @@
 import { TopNav } from '../../../components/TopNav';
 import { fetchList, DEMO_EMPLOYER } from '../../../lib/serverApi';
+import { isSignedIn } from '../../../lib/session';
+import { ChatComposer } from '../../../components/ChatComposer';
 
 interface Msg {
   id: string;
@@ -47,9 +49,13 @@ export default async function ChatThreadPage({ params }: { params: Promise<{ id:
           </div>
         )}
 
-        <p className="muted" style={{ marginTop: 16, textAlign: 'center' }}>
-          Read-only preview. Sending happens in the mobile app (POST stays strictly authenticated).
-        </p>
+        {(await isSignedIn()) ? (
+          <ChatComposer conversationId={id} />
+        ) : (
+          <p className="muted" style={{ marginTop: 16, textAlign: 'center' }}>
+            <a href="/login" className="nav-link nav-link-active">Sign in</a> to send a message.
+          </p>
+        )}
       </main>
     </div>
   );

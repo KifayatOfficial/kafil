@@ -1,5 +1,8 @@
 import { TopNav } from '../../components/TopNav';
 import { fetchJson, DEMO_WORKER } from '../../lib/serverApi';
+import { isSignedIn } from '../../lib/session';
+import { QuickForm } from '../../components/QuickForm';
+import { updateProfileAction } from '../actions';
 
 interface Me {
   id: string;
@@ -24,7 +27,9 @@ function badges(me: Me) {
 }
 
 export default async function ProfilePage() {
-  // Show the demo WORKER — they carry the worker profile (bio, experience, rating).
+  // If signed in, /api/auth/me returns the REAL user (fetchJson uses their Bearer token);
+  // otherwise it falls back to the demo worker so the page is populated in dev.
+  const signedIn = await isSignedIn();
   const data = await fetchJson<{ user: Me }>('/api/auth/me', DEMO_WORKER);
   const me = data?.user ?? null;
 
@@ -47,7 +52,14 @@ export default async function ProfilePage() {
                 {me.displayName.charAt(0)}
               </div>
               <div style={{ flex: 1 }}>
-                <h2 style={{ margin: 0 }}>{me.displayName}</h2>
+                <div className="card-headline">
+                  <h2 style={{ margin: 0 }}>{me.displayName}</h2>
+                  {signedIn ? (
+                    <QuickForm action={updateProfileAction} openLabel="✏️ Edit" submitLabel="Save">
+                      <input name="displayName" className="input" placeholder="Display name" defaultValue={me.displayName} maxLength={120} />
+                    </QuickForm>
+                  ) : null}
+                </div>
                 <div className="muted">{me.phoneE164}</div>
                 <div className="job-meta" style={{ marginTop: 8 }}>
                   {me.workerProfile?.ratingBayesian ? (
@@ -57,6 +69,11 @@ export default async function ProfilePage() {
                   <span className="chip">KYC L{me.kycLevel}</span>
                   <span className="chip chip-status">{me.status}</span>
                 </div>
+                {!signedIn ? (
+                  <p className="muted" style={{ marginTop: 8 }}>
+                    Showing demo profile. <a href="/login" className="nav-link nav-link-active" style={{ padding: '2px 8px' }}>Sign in</a> to edit your own.
+                  </p>
+                ) : null}
               </div>
             </section>
 

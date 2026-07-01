@@ -1,14 +1,16 @@
 'use server';
 
 // Next server actions — the web shell's write path. They run on the web SERVER (never
-// the browser), POST to the API with the dev-stub actor + a generated Idempotency-Key
-// (P4), then revalidate the affected page so the new row shows immediately.
+// the browser), POST to the API with a generated Idempotency-Key (P4), then revalidate.
 //
-// Only endpoints that accept the dev stub are wired here (jobs, groups, group posts,
-// join). Chat-send stays mobile-only — it requires a real authenticated participant.
+// Auth: if a real user is signed in (httpOnly session cookie), the write goes out as
+// that user (Bearer token) — this unlocks strictly-authed endpoints like chat-send and
+// profile-edit. When signed out, we fall back to the x-user-id dev stub so anonymous
+// browsing + the dev-only writes still work. `requireAuth: true` refuses the dev stub.
 
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'node:crypto';
+import { getSessionToken } from '../lib/session';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 const DEV_EMPLOYER = process.env.WEB_DEV_USER_ID ?? '00000000-0000-0000-0000-000000000010';
@@ -22,16 +24,23 @@ export interface ActionResult {
   message?: string;
 }
 
-async function post(path: string, body: Record<string, unknown>, asUser: string): Promise<ActionResult> {
+async function post(
+  path: string,
+  body: Record<string, unknown>,
+  opts: { devUser: string; requireAuth?: boolean } = { devUser: DEV_WORKER },
+): Promise<ActionResult> {
+  const token = await getSessionToken();
+  if (opts.requireAuth && !token) {
+    return { ok: false, message: 'Please sign in to do this.' };
+  }
   try {
     const key = randomUUID();
+    const auth: Record<string, string> = token
+      ? { Authorization: `Bearer ${token}` }
+      : { 'x-user-id': opts.devUser };
     const res = await fetch(`${API_URL}${path}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': asUser,
-        'idempotency-key': key,
-      },
+      headers: { 'Content-Type': 'application/json', 'idempotency-key': key, ...auth },
       // Some endpoints validate idempotency_key IN THE BODY (e.g. CreateJobInput), others
       // only read the header. Send both so every write path is satisfied.
       body: JSON.stringify({ idempotency_key: key, ...body }),
@@ -41,6 +50,25 @@ async function post(path: string, body: Record<string, unknown>, asUser: string)
     if (!res.ok || data.ok === false) {
       return { ok: false, message: data.message ?? data.code ?? `Failed (${res.status})` };
     }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'Network error' };
+  }
+}
+
+async function patch(path: string, body: Record<string, unknown>): Promise<ActionResult> {
+  const token = await getSessionToken();
+  if (!token) return { ok: false, message: 'Please sign in to do this.' };
+  try {
+    const key = randomUUID();
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'idempotency-key': key, Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ idempotency_key: key, ...body }),
+      cache: 'no-store',
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; code?: string };
+    if (!res.ok || data.ok === false) return { ok: false, message: data.message ?? data.code ?? `Failed (${res.status})` };
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : 'Network error' };
@@ -67,7 +95,7 @@ export async function postJobAction(_prev: ActionResult | null, form: FormData):
       payment_mode: 'cash',
       specialty_ids: [DEMO_SPECIALTY],
     },
-    DEV_EMPLOYER,
+    { devUser: DEV_EMPLOYER },
   );
   if (r.ok) revalidatePath('/');
   return r.ok ? { ok: true, message: 'Job posted.' } : r;
@@ -80,7 +108,7 @@ export async function createGroupAction(_prev: ActionResult | null, form: FormDa
   const category = String(form.get('category') ?? 'general');
   if (name.length < 3) return { ok: false, message: 'Group name must be at least 3 characters.' };
 
-  const r = await post('/api/groups', { name, description: description || undefined, category }, DEV_WORKER);
+  const r = await post('/api/groups', { name, description: description || undefined, category }, { devUser: DEV_WORKER });
   if (r.ok) revalidatePath('/community');
   return r.ok ? { ok: true, message: 'Group created.' } : r;
 }
@@ -93,7 +121,7 @@ export async function createPostAction(_prev: ActionResult | null, form: FormDat
   if (!groupId) return { ok: false, message: 'Missing group.' };
   if (body.length < 1) return { ok: false, message: 'Write something to post.' };
 
-  const r = await post(`/api/groups/${groupId}/posts`, { body, kind }, DEV_WORKER);
+  const r = await post(`/api/groups/${groupId}/posts`, { body, kind }, { devUser: DEV_WORKER });
   if (r.ok) revalidatePath(`/community/${groupId}`);
   return r.ok ? { ok: true, message: 'Posted.' } : r;
 }
@@ -102,7 +130,7 @@ export async function createPostAction(_prev: ActionResult | null, form: FormDat
 export async function joinGroupAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
   const groupId = String(form.get('groupId') ?? '');
   if (!groupId) return { ok: false, message: 'Missing group.' };
-  const r = await post(`/api/groups/${groupId}/join`, {}, DEV_WORKER);
+  const r = await post(`/api/groups/${groupId}/join`, {}, { devUser: DEV_WORKER });
   if (r.ok) revalidatePath('/community');
   return r.ok ? { ok: true, message: 'Joined.' } : r;
 }
@@ -117,7 +145,7 @@ export async function applyToJobAction(_prev: ActionResult | null, form: FormDat
   if (message) body.message = message;
   if (Number.isFinite(rate) && rate > 0) body.proposed_rate_pkr = rate;
 
-  const r = await post(`/api/jobs/${jobId}/applications`, body, DEV_WORKER);
+  const r = await post(`/api/jobs/${jobId}/applications`, body, { devUser: DEV_WORKER });
   if (r.ok) revalidatePath(`/job/${jobId}`);
   return r.ok ? { ok: true, message: 'Application sent.' } : r;
 }
@@ -130,7 +158,31 @@ export async function submitReviewAction(_prev: ActionResult | null, form: FormD
   if (!shopId) return { ok: false, message: 'Missing shop.' };
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) return { ok: false, message: 'Pick a rating 1–5.' };
 
-  const r = await post(`/api/shops/${shopId}/reviews`, { rating, comment: comment || undefined }, DEV_WORKER);
+  const r = await post(`/api/shops/${shopId}/reviews`, { rating, comment: comment || undefined }, { devUser: DEV_WORKER });
   if (r.ok) revalidatePath(`/shops/${shopId}`);
   return r.ok ? { ok: true, message: 'Review submitted.' } : r;
+}
+
+// ── Chat: send a message (REAL AUTH ONLY — needs a signed-in participant) ──
+export async function sendMessageAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
+  const conversationId = String(form.get('conversationId') ?? '');
+  const body = String(form.get('body') ?? '').trim();
+  if (!conversationId) return { ok: false, message: 'Missing conversation.' };
+  if (!body) return { ok: false, message: 'Write a message.' };
+
+  const r = await post(`/api/conversations/${conversationId}/messages`, { body }, { devUser: DEV_WORKER, requireAuth: true });
+  if (r.ok) revalidatePath(`/chat/${conversationId}`);
+  return r.ok ? { ok: true, message: 'Sent.' } : r;
+}
+
+// ── Profile: edit own display name (REAL AUTH ONLY) ───────────────────────
+// PATCH /api/auth/me/profile accepts display_name / preferred_lang / photo_url.
+// (Worker bio lives on a separate worker-profile endpoint — not edited here.)
+export async function updateProfileAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
+  const displayName = String(form.get('displayName') ?? '').trim();
+  if (displayName.length < 1) return { ok: false, message: 'Enter a display name.' };
+
+  const r = await patch('/api/auth/me/profile', { display_name: displayName });
+  if (r.ok) revalidatePath('/profile');
+  return r.ok ? { ok: true, message: 'Profile updated.' } : r;
 }
