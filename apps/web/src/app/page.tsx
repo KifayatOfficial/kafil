@@ -1,6 +1,8 @@
 import { TopNav } from '../components/TopNav';
 import { QuickForm } from '../components/QuickForm';
 import { postJobAction } from './actions';
+import { FadeRise, Stagger, StaggerItem, Lift, CountUp } from '../components/motion';
+import { IconWork, IconUsers, IconStar, IconCalendar } from '../components/icons';
 
 interface Job {
   id: string;
@@ -44,38 +46,53 @@ export default async function Page() {
       <TopNav active="/" />
 
       <main className="container">
-        <section className="stats">
-          <StatCard label="Open jobs" value={String(jobs.length)} tone="primary" />
-          <StatCard label="Featured" value={String(featuredCount)} tone="accent" />
-          <StatCard label="Positions" value={String(totalHeadcount)} />
-          <StatCard label="Avg rate" value={avgRate ? `${pkr(avgRate)} PKR` : '—'} suffix="/ day" />
-        </section>
+        {/* Stats "boot up" — numbers count from 0, whole strip staggers in. */}
+        <Stagger className="stats">
+          <StaggerItem>
+            <StatCard label="Open jobs" valueNum={jobs.length} tone="primary" />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard label="Featured" valueNum={featuredCount} tone="accent" />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard label="Positions" valueNum={totalHeadcount} />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard label="Avg rate" valueNum={avgRate} suffix={avgRate ? '/ day' : undefined} unit={avgRate ? 'PKR' : '—'} />
+          </StaggerItem>
+        </Stagger>
 
-        <div className="section-head">
-          <h2>Open jobs</h2>
-          <span className="count-pill">{jobs.length}</span>
-          <span style={{ flex: 1 }} />
-          <QuickForm action={postJobAction} openLabel="＋ Post a job" submitLabel="Post job">
-            <input name="title" className="input" placeholder="Job title (e.g. Mason for boundary wall)" maxLength={200} />
-            <input name="rate" className="input" type="number" placeholder="Daily rate (PKR)" min={1} />
-            <textarea name="description" className="input" placeholder="Describe the work (optional)" rows={2} maxLength={4000} />
-          </QuickForm>
-        </div>
+        <FadeRise delay={0.15}>
+          <div className="section-head">
+            <h2>Open jobs</h2>
+            <span className="count-pill">{jobs.length}</span>
+            <span style={{ flex: 1 }} />
+            <QuickForm action={postJobAction} openLabel="＋ Post a job" submitLabel="Post job">
+              <input name="title" className="input" placeholder="Job title (e.g. Mason for boundary wall)" maxLength={200} />
+              <input name="rate" className="input" type="number" placeholder="Daily rate (PKR)" min={1} />
+              <textarea name="description" className="input" placeholder="Describe the work (optional)" rows={2} maxLength={4000} />
+            </QuickForm>
+          </div>
+        </FadeRise>
 
         {jobs.length === 0 ? (
-          <div className="empty">
-            <div className="empty-glyph" aria-hidden>
-              🗂️
+          <FadeRise delay={0.2}>
+            <div className="empty">
+              <div className="empty-glyph" aria-hidden>
+                <IconWork size={48} />
+              </div>
+              <p className="empty-title">No open jobs yet</p>
+              <p className="muted">Seed the database to populate the feed.</p>
             </div>
-            <p className="empty-title">No open jobs yet</p>
-            <p className="muted">Seed the database to populate the feed.</p>
-          </div>
+          </FadeRise>
         ) : (
-          <div className="grid">
+          <Stagger className="grid">
             {jobs.map((j) => (
-              <JobCard key={j.id} job={j} />
+              <StaggerItem key={j.id}>
+                <JobCard job={j} />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </main>
     </div>
@@ -84,19 +101,22 @@ export default async function Page() {
 
 function StatCard({
   label,
-  value,
+  valueNum,
   suffix,
+  unit,
   tone,
 }: {
   label: string;
-  value: string;
+  valueNum: number;
   suffix?: string;
+  unit?: string;
   tone?: 'primary' | 'accent';
 }) {
   return (
     <div className={`stat${tone ? ` stat-${tone}` : ''}`}>
       <div className="stat-value">
-        {value}
+        {unit === '—' ? '—' : <CountUp value={valueNum} />}
+        {unit && unit !== '—' ? <span className="stat-suffix"> {unit}</span> : null}
         {suffix ? <span className="stat-suffix"> {suffix}</span> : null}
       </div>
       <div className="stat-label">{label}</div>
@@ -107,18 +127,35 @@ function StatCard({
 function JobCard({ job }: { job: Job }) {
   const featured = isFeatured(job);
   return (
-    <a className={`card job-card card-link${featured ? ' job-card-featured' : ''}`} href={`/job/${job.id}`}>
-      {featured ? <span className="ribbon">★ Featured</span> : null}
-      <h3 className="job-title">{job.title}</h3>
+    <Lift className={`card job-card card-link${featured ? ' job-card-featured' : ''}`} href={`/job/${job.id}`}>
+      {featured ? (
+        <span className="ribbon">
+          <IconStar size={12} /> Featured
+        </span>
+      ) : null}
+      <div className="job-card-top">
+        <span className="job-icon" aria-hidden>
+          <IconWork size={20} />
+        </span>
+        <h3 className="job-title">{job.title}</h3>
+      </div>
       {job.description ? <p className="job-desc">{job.description}</p> : null}
       <div className="job-meta">
         <span className="chip chip-rate">
-          {new Intl.NumberFormat('en-PK').format(job.ratePkr)} PKR / {job.rateUnit}
+          {pkr(job.ratePkr)} PKR / {job.rateUnit}
         </span>
-        {job.headcount && job.headcount > 1 ? <span className="chip">👷 {job.headcount} needed</span> : null}
-        {job.durationDays ? <span className="chip">📅 {job.durationDays}d</span> : null}
+        {job.headcount && job.headcount > 1 ? (
+          <span className="chip">
+            <IconUsers size={13} /> {job.headcount} needed
+          </span>
+        ) : null}
+        {job.durationDays ? (
+          <span className="chip">
+            <IconCalendar size={13} /> {job.durationDays}d
+          </span>
+        ) : null}
         <span className="chip chip-status">{job.status}</span>
       </div>
-    </a>
+    </Lift>
   );
 }

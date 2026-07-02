@@ -1,4 +1,5 @@
 import './globals.css';
+import { Providers } from '../components/Providers';
 
 export const metadata = { title: 'KAFIL — Desktop' };
 
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: noFlashTheme }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
