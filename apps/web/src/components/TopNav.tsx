@@ -5,6 +5,7 @@
 
 import { isSignedIn } from '../lib/session';
 import { SignOutButton } from './SignOutButton';
+import { ThemeToggle } from './ThemeToggle';
 
 const LINKS = [
   { href: '/', label: 'Work', glyph: '🧰' },
@@ -39,6 +40,7 @@ export async function TopNav({ active }: { active: NavHref }) {
             <span aria-hidden>{l.glyph}</span> {l.label}
           </a>
         ))}
+        <ThemeToggle />
         {signedIn ? <SignOutButton /> : <a href="/login" className="nav-link nav-link-active">Sign in</a>}
       </nav>
     </header>

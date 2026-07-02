@@ -27,8 +27,12 @@
   font-family: system-ui, -apple-system, sans-serif;
   color-scheme: light;
 }
+/* Dark palette as a reusable custom-property set. Applied in two places below:
+ *   1. when the OS prefers dark AND the user hasn't forced light, and
+ *   2. when the user explicitly picks dark via the toggle ([data-theme="dark"]).
+ * Mirrors the mobile app's system / light / dark control. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #1b1814;
     --surface: #241f1a;
     --surface-sunken: #161310;
@@ -44,12 +48,32 @@
     --danger: #e06352;
     --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
     --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.6);
-    /* Charcoal glass over the dark canvas (mirrors core dark glass tokens). */
     --glass-tint: rgba(27, 24, 20, 0.68);
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-highlight: rgba(255, 255, 255, 0.12);
     color-scheme: dark;
   }
+}
+:root[data-theme='dark'] {
+  --bg: #1b1814;
+  --surface: #241f1a;
+  --surface-sunken: #161310;
+  --text: #f2ede6;
+  --text-muted: #b7aea2;
+  --text-faint: #857c71;
+  --text-on-primary: #0e1f16;
+  --border: #352e27;
+  --primary: #22a668;
+  --primary-soft: #16352a;
+  --accent: #d49a4f;
+  --accent-soft: #33291a;
+  --danger: #e06352;
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.6);
+  --glass-tint: rgba(27, 24, 20, 0.68);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -299,6 +323,7 @@ h2 { font-size: 20px; font-weight: 700; }
 .input:focus { outline: none; border-color: var(--primary); }
 .form-ok { color: var(--primary); font-size: 13px; font-weight: 600; }
 .form-err { color: var(--danger); font-size: 13px; font-weight: 600; }
+.theme-toggle { font-size: 16px; cursor: pointer; background: var(--surface-sunken); }
 .nav-search { display: inline-flex; }
 .nav-search-input {
   width: 160px;
