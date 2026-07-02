@@ -31,6 +31,9 @@ export async function TopNav({ active }: { active: NavHref }) {
         </div>
       </div>
       <nav className="nav">
+        <form action="/search" className="nav-search" role="search">
+          <input name="q" className="nav-search-input" placeholder="🔎 Search…" aria-label="Search" />
+        </form>
         {LINKS.map((l) => (
           <a key={l.href} href={l.href} className={`nav-link${l.href === active ? ' nav-link-active' : ''}`}>
             <span aria-hidden>{l.glyph}</span> {l.label}
